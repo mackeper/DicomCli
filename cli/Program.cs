@@ -1,4 +1,6 @@
 ﻿using System.CommandLine;
+using System.CommandLine.Invocation;
+using System.Text.Json;
 using FellowOakDicom;
 
 new DicomSetupBuilder()
@@ -10,16 +12,29 @@ var fileArgument = new Argument<string>(
     getDefaultValue: () => "0002.DCM",
     description: "Path to DICOM file");
 
+var formatOption = new Option<string>(
+    aliases: ["-f", "--format"],
+    getDefaultValue: () => "text",
+    description: "Output format: text or json")
+    .FromAmong("text", "json");
+
 var rootCommand = new RootCommand("Reads DICOM files and prints dataset tags")
 {
-    fileArgument
+    fileArgument,
+    formatOption
 };
 
-rootCommand.SetHandler((string filePath) => ProcessDicomFile(filePath), fileArgument);
+rootCommand.SetHandler(context =>
+{
+    var filePath = context.ParseResult.GetValueForArgument(fileArgument);
+    var format = context.ParseResult.GetValueForOption(formatOption) ?? "text";
+
+    context.ExitCode = ProcessDicomFile(filePath, format);
+});
 
 return await rootCommand.InvokeAsync(args);
 
-static int ProcessDicomFile(string filePath)
+static int ProcessDicomFile(string filePath, string format)
 {
     if (!File.Exists(filePath))
     {
@@ -50,6 +65,12 @@ static int ProcessDicomFile(string filePath)
 
     var dataset = file.Dataset;
     var transferSyntaxName = file.FileMetaInfo?.TransferSyntax?.UID?.Name ?? "Unknown";
+    if (format == "json")
+    {
+        WriteJsonOutput(dataset, transferSyntaxName);
+        return 0;
+    }
+
     Console.WriteLine($"Transfer Syntax: {transferSyntaxName}");
     Console.WriteLine();
 
@@ -67,6 +88,34 @@ static int ProcessDicomFile(string filePath)
     }
 
     return 0;
+}
+
+static void WriteJsonOutput(DicomDataset dataset, string transferSyntaxName)
+{
+    var output = new
+    {
+        transferSyntax = transferSyntaxName,
+        tags = dataset.Select(item => new
+        {
+            group = item.Tag.Group.ToString("X4"),
+            element = item.Tag.Element.ToString("X4"),
+            name = item.Tag.DictionaryEntry?.Name ?? item.Tag.ToString(),
+            value = GetValueString(item, dataset)
+        })
+    };
+
+    Console.WriteLine(JsonSerializer.Serialize(output));
+}
+
+static string GetValueString(DicomItem item, DicomDataset dataset)
+{
+    return item switch
+    {
+        DicomSequence seq => $"[{seq.Items.Count} items]",
+        DicomFragmentSequence frag => $"[{frag.Fragments.Sum(b => b?.Size ?? 0)} bytes]",
+        DicomElement elem => GetElementValueString(elem, dataset),
+        _ => "[unknown]"
+    };
 }
 
 static string GetElementValueString(DicomElement elem, DicomDataset dataset)
