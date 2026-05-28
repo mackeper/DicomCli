@@ -74,18 +74,7 @@ static int ProcessDicomFile(string filePath, string format)
     Console.WriteLine($"Transfer Syntax: {transferSyntaxName}");
     Console.WriteLine();
 
-    foreach (var item in dataset)
-    {
-        var tagStr = item.ToString();
-        var valueStr = item switch
-        {
-            DicomSequence seq => $"[{seq.Items.Count} items]",
-            DicomFragmentSequence frag => $"[{frag.Fragments.Sum(b => b?.Size ?? 0)} bytes]",
-            DicomElement elem => GetElementValueString(elem, dataset),
-            _ => "[unknown]"
-        };
-        Console.WriteLine($"{tagStr} = {valueStr}");
-    }
+    WriteTextDataset(dataset, 0);
 
     return 0;
 }
@@ -95,23 +84,68 @@ static void WriteJsonOutput(DicomDataset dataset, string transferSyntaxName)
     var output = new
     {
         transferSyntax = transferSyntaxName,
-        tags = dataset.Select(item => new
-        {
-            group = item.Tag.Group.ToString("X4"),
-            element = item.Tag.Element.ToString("X4"),
-            name = item.Tag.DictionaryEntry?.Name ?? item.Tag.ToString(),
-            value = GetValueString(item, dataset)
-        })
+        tags = GetJsonDataset(dataset)
     };
 
     Console.WriteLine(JsonSerializer.Serialize(output));
 }
 
-static string GetValueString(DicomItem item, DicomDataset dataset)
+static void WriteTextDataset(DicomDataset dataset, int indent)
+{
+    foreach (var item in dataset)
+    {
+        var padding = new string(' ', indent);
+        var tagStr = item.ToString();
+        var valueStr = GetTextValueString(item, dataset);
+        Console.WriteLine($"{padding}{tagStr} = {valueStr}");
+
+        if (item is DicomSequence sequence)
+        {
+            WriteTextSequence(sequence, indent + 2);
+        }
+    }
+}
+
+static void WriteTextSequence(DicomSequence sequence, int indent)
+{
+    for (var i = 0; i < sequence.Items.Count; i++)
+    {
+        var padding = new string(' ', indent);
+        Console.WriteLine($"{padding}Item {i + 1}:");
+        WriteTextDataset(sequence.Items[i], indent + 2);
+    }
+}
+
+static string GetTextValueString(DicomItem item, DicomDataset dataset)
 {
     return item switch
     {
         DicomSequence seq => $"[{seq.Items.Count} items]",
+        DicomFragmentSequence frag => $"[{frag.Fragments.Sum(b => b?.Size ?? 0)} bytes]",
+        DicomElement elem => GetElementValueString(elem, dataset),
+        _ => "[unknown]"
+    };
+}
+
+static IEnumerable<object> GetJsonDataset(DicomDataset dataset)
+{
+    return dataset.Select(item => new
+    {
+        group = item.Tag.Group.ToString("X4"),
+        element = item.Tag.Element.ToString("X4"),
+        name = item.Tag.DictionaryEntry?.Name ?? item.Tag.ToString(),
+        value = GetJsonValue(item, dataset)
+    });
+}
+
+static object GetJsonValue(DicomItem item, DicomDataset dataset)
+{
+    return item switch
+    {
+        DicomSequence seq => new
+        {
+            items = seq.Items.Select(GetJsonDataset)
+        },
         DicomFragmentSequence frag => $"[{frag.Fragments.Sum(b => b?.Size ?? 0)} bytes]",
         DicomElement elem => GetElementValueString(elem, dataset),
         _ => "[unknown]"
