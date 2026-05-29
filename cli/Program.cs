@@ -9,7 +9,6 @@ new DicomSetupBuilder()
 
 var fileArgument = new Argument<string>(
     name: "file",
-    getDefaultValue: () => "0002.DCM",
     description: "Path to DICOM file");
 
 var formatOption = new Option<string>(

@@ -12,7 +12,7 @@
 
 - `cli/` — single project, entry point `cli/Program.cs`
 - `DicomCli.slnx` — solution file (single project)
-- `0002.DCM` — sample DICOM file in repo root (default input)
+- `0002.DCM` — sample DICOM file in repo root
 
 <developer-review-loop>
 ## Developer/Reviewer Loop
@@ -28,4 +28,3 @@ For every code change (one logical unit: feature, fix, or refactor), follow this
 5. **Re-validate**: run `make build` and `make format` again after applying changes
 6. **Repeat** steps 3-5 maximum 3 times per change, or until reviewer has no further suggestions
 </developer-review-loop>
-
