@@ -1,7 +1,7 @@
 VERSION ?= 0.1.0
 
 run:
-	DOTNET_GCHeapHardLimit=7C0000000 dotnet run --project cli
+	DOTNET_GCHeapHardLimit=7C0000000 dotnet run --project src/cli
 
 build:
 	DOTNET_GCHeapHardLimit=7C0000000 dotnet build
@@ -22,5 +22,5 @@ publish:
 	  -p:DebugType=None \
 	  -p:DebugSymbols=false \
 	  -o ./bin \
-	  cli
+	  src/cli
 	@echo "Run with: ./bin/cli"

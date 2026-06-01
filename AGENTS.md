@@ -10,7 +10,7 @@
 
 ## Structure
 
-- `cli/` — single project, entry point `cli/Program.cs`
+- `src/cli/` — single project, entry point `src/cli/Program.cs`
 - `DicomCli.slnx` — solution file (single project)
 - `0002.DCM` — sample DICOM file in repo root
 

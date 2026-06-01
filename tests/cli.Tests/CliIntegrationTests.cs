@@ -30,7 +30,7 @@ public sealed class CliIntegrationTests
     private static async Task<CliResult> RunCliAsync(params string[] arguments)
     {
         var repoRoot = GetRepoRoot();
-        var projectPath = Path.Combine(repoRoot, "cli", "cli.csproj");
+        var projectPath = Path.Combine(repoRoot, "src", "cli", "cli.csproj");
 
         using var process = new Process();
         process.StartInfo = new ProcessStartInfo
