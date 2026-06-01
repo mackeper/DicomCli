@@ -1,3 +1,5 @@
+VERSION ?= 0.1.0
+
 run:
 	DOTNET_GCHeapHardLimit=7C0000000 dotnet run --project cli
 
@@ -13,6 +15,8 @@ publish:
 	  -r linux-arm64 \
 	  --self-contained true \
 	  -p:PublishSingleFile=true \
+	  -p:Version=$(VERSION) \
+	  -p:InformationalVersion=$(VERSION) \
 	  -p:StripSymbols=true \
 	  -p:InvariantGlobalization=true \
 	  -p:DebugType=None \
