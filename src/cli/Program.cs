@@ -29,9 +29,9 @@ var formatOption = new Option<string>(
 
 var binaryFormatOption = new Option<string>(
     aliases: ["--binary-format"],
-    getDefaultValue: () => "summary",
-    description: "Binary value format: summary or hex")
-    .FromAmong("summary", "hex");
+    getDefaultValue: () => "base64",
+    description: "Binary value format: base64, summary, or hex")
+    .FromAmong("base64", "summary", "hex");
 
 var readCommand = new Command("read", "Reads a DICOM file and prints dataset tags")
 {
@@ -44,7 +44,7 @@ readCommand.SetHandler(context =>
 {
     var filePath = context.ParseResult.GetValueForArgument(readFileArgument);
     var format = context.ParseResult.GetValueForOption(formatOption) ?? "text";
-    var binaryFormat = context.ParseResult.GetValueForOption(binaryFormatOption) ?? "summary";
+    var binaryFormat = context.ParseResult.GetValueForOption(binaryFormatOption) ?? "base64";
 
     context.ExitCode = ProcessDicomFile(filePath, format, binaryFormat);
 });
@@ -73,7 +73,7 @@ rootCommand.SetHandler((InvocationContext context) =>
 {
     var filePath = context.ParseResult.GetValueForArgument(readFileArgument);
     var format = context.ParseResult.GetValueForOption(formatOption) ?? "text";
-    var binaryFormat = context.ParseResult.GetValueForOption(binaryFormatOption) ?? "summary";
+    var binaryFormat = context.ParseResult.GetValueForOption(binaryFormatOption) ?? "base64";
 
     context.ExitCode = ProcessDicomFile(filePath, format, binaryFormat);
 });
@@ -473,6 +473,12 @@ static string? GetOptionalStringProperty(JsonElement value, string propertyName)
 
 static int ProcessDicomFile(string filePath, string format, string binaryFormat)
 {
+    if (format == "json" && binaryFormat != "base64")
+    {
+        Console.Error.WriteLine($"--binary-format {binaryFormat} cannot be used with --format json. DICOMweb JSON requires base64 InlineBinary.");
+        return 1;
+    }
+
     if (!File.Exists(filePath))
     {
         Console.Error.WriteLine($"File not found: {filePath}");
@@ -691,6 +697,7 @@ static string GetTextFragmentValueString(DicomFragmentSequence frag, string bina
 {
     return binaryFormat switch
     {
+        "base64" => GetDicomwebFragmentInlineBinary(frag),
         "hex" => $"[{string.Join(", ", frag.Fragments.Select(b => Convert.ToHexString(b?.Data ?? Array.Empty<byte>())))}]",
         _ => GetBinarySummary(frag.Fragments.Sum(b => b?.Size ?? 0))
     };
@@ -712,6 +719,7 @@ static string GetBinaryValueString(DicomElement elem, string binaryFormat)
 {
     return binaryFormat switch
     {
+        "base64" => GetDicomwebInlineBinary(elem),
         "hex" => Convert.ToHexString(elem.Buffer?.Data ?? Array.Empty<byte>()),
         _ => GetBinarySummary(elem.Buffer?.Size ?? 0)
     };

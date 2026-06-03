@@ -80,7 +80,7 @@ public sealed class CliIntegrationTests
             Assert.Empty(writeResult.StandardError);
             Assert.True(File.Exists(dicomPath));
 
-            var readResult = await RunCliAsync(dicomPath, "--format", "json", "--binary-format", "hex");
+            var readResult = await RunCliAsync(dicomPath, "--format", "json");
 
             Assert.Equal(0, readResult.ExitCode);
             Assert.Contains("\"00100010\":{\"vr\":\"PN\",\"name\":", readResult.StandardOutput);
@@ -98,6 +98,71 @@ public sealed class CliIntegrationTests
             Assert.Equal(0, roundTripWriteResult.ExitCode);
             Assert.Empty(roundTripWriteResult.StandardError);
             Assert.True(File.Exists(roundTripDicomPath));
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ReadText_WithBinaryData_DefaultsToBase64AndSupportsExplicitBase64()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-binary-");
+        try
+        {
+            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
+            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
+            await File.WriteAllTextAsync(jsonPath, """
+                {
+                  "00080016": { "vr": "UI", "Value": ["1.2.840.10008.5.1.4.1.1.2"] },
+                  "00080018": { "vr": "UI", "Value": ["1.2.826.0.1.3680043.10.999.1"] },
+                  "00280010": { "vr": "US", "Value": [1] },
+                  "00280011": { "vr": "US", "Value": [4] },
+                  "00280100": { "vr": "US", "Value": [8] },
+                  "00280101": { "vr": "US", "Value": [8] },
+                  "00280102": { "vr": "US", "Value": [7] },
+                  "00280103": { "vr": "US", "Value": [0] },
+                  "7FE00010": { "vr": "OB", "InlineBinary": "AAECAw==" }
+                }
+                """, TestContext.Current.CancellationToken);
+
+            var writeResult = await RunCliAsync("write-json", jsonPath, dicomPath);
+            Assert.Equal(0, writeResult.ExitCode);
+
+            var defaultResult = await RunCliAsync(dicomPath);
+            var base64Result = await RunCliAsync(dicomPath, "--binary-format", "base64");
+
+            Assert.Equal(0, defaultResult.ExitCode);
+            Assert.Contains("AAECAw==", defaultResult.StandardOutput);
+            Assert.DoesNotContain("[4 bytes]", defaultResult.StandardOutput);
+            Assert.Equal(0, base64Result.ExitCode);
+            Assert.Contains("AAECAw==", base64Result.StandardOutput);
+            Assert.Empty(defaultResult.StandardError);
+            Assert.Empty(base64Result.StandardError);
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("summary")]
+    [InlineData("hex")]
+    public async Task ReadJson_WithNonBase64BinaryFormat_ReturnsFailure(string binaryFormat)
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-binary-");
+        try
+        {
+            var sampleFile = Path.Combine(workDirectory.FullName, "sample.dcm");
+            await WriteSampleDicomAsync(sampleFile);
+
+            var result = await RunCliAsync(sampleFile, "--format", "json", "--binary-format", binaryFormat);
+
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains($"--binary-format {binaryFormat} cannot be used with --format json", result.StandardError);
+            Assert.Empty(result.StandardOutput);
         }
         finally
         {
