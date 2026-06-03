@@ -10,7 +10,7 @@ format:
 	DOTNET_GCHeapHardLimit=7C0000000 dotnet format
 
 publish:
-	dotnet publish \
+	DOTNET_GCHeapHardLimit=7C0000000 dotnet publish \
 	  -c Release \
 	  -r linux-arm64 \
 	  --self-contained true \
