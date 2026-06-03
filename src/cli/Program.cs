@@ -49,13 +49,13 @@ readCommand.SetHandler(context =>
     context.ExitCode = ProcessDicomFile(filePath, format, binaryFormat);
 });
 
-var writeJsonCommand = new Command("write-json", "Reads DICOMweb JSON and writes a DICOM file")
+var writeCommand = new Command("write", "Reads DICOMweb JSON and writes a DICOM file")
 {
     jsonInputArgument,
     dicomOutputArgument
 };
 
-writeJsonCommand.SetHandler(context =>
+writeCommand.SetHandler(context =>
 {
     var inputPath = context.ParseResult.GetValueForArgument(jsonInputArgument);
     var outputPath = context.ParseResult.GetValueForArgument(dicomOutputArgument);
@@ -66,7 +66,7 @@ writeJsonCommand.SetHandler(context =>
 var rootCommand = new RootCommand("Reads DICOM files and writes DICOM files from DICOMweb JSON")
 {
     readCommand,
-    writeJsonCommand
+    writeCommand
 };
 
 rootCommand.SetHandler((InvocationContext context) =>

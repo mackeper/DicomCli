@@ -15,7 +15,7 @@
 - `read <file>` or `<file>` - read DICOM file
 - `--format text|json` - output text default or DICOMweb JSON
 - `--binary-format summary|hex` - binary output summary default or base64/hex detail
-- `write-json <input-json> <output-dicom>` - write DICOM from DICOMweb JSON
+- `write <input-json> <output-dicom>` - write DICOM from DICOMweb JSON
 
 ## Structure
 

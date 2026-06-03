@@ -45,7 +45,7 @@ public sealed class CliIntegrationTests
     }
 
     [Fact]
-    public async Task WriteJson_WithDicomwebJson_WritesReadableDicomFile()
+    public async Task Write_WithDicomwebJson_WritesReadableDicomFile()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-json-");
         try
@@ -74,7 +74,7 @@ public sealed class CliIntegrationTests
                 }
                 """, TestContext.Current.CancellationToken);
 
-            var writeResult = await RunCliAsync("write-json", jsonPath, dicomPath);
+            var writeResult = await RunCliAsync("write", jsonPath, dicomPath);
 
             Assert.Equal(0, writeResult.ExitCode);
             Assert.Empty(writeResult.StandardError);
@@ -93,7 +93,7 @@ public sealed class CliIntegrationTests
             Assert.Contains("\"InlineBinary\":\"AA==\"}", readResult.StandardOutput);
 
             await File.WriteAllTextAsync(roundTripJsonPath, readResult.StandardOutput, TestContext.Current.CancellationToken);
-            var roundTripWriteResult = await RunCliAsync("write-json", roundTripJsonPath, roundTripDicomPath);
+            var roundTripWriteResult = await RunCliAsync("write", roundTripJsonPath, roundTripDicomPath);
 
             Assert.Equal(0, roundTripWriteResult.ExitCode);
             Assert.Empty(roundTripWriteResult.StandardError);
@@ -127,7 +127,7 @@ public sealed class CliIntegrationTests
                 }
                 """, TestContext.Current.CancellationToken);
 
-            var writeResult = await RunCliAsync("write-json", jsonPath, dicomPath);
+            var writeResult = await RunCliAsync("write", jsonPath, dicomPath);
             Assert.Equal(0, writeResult.ExitCode);
 
             var defaultResult = await RunCliAsync(dicomPath);
@@ -171,7 +171,7 @@ public sealed class CliIntegrationTests
     }
 
     [Fact]
-    public async Task WriteJson_WithOutOfRangeUnsignedShort_ReturnsFailure()
+    public async Task Write_WithOutOfRangeUnsignedShort_ReturnsFailure()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-json-");
         try
@@ -184,7 +184,7 @@ public sealed class CliIntegrationTests
                 }
                 """, TestContext.Current.CancellationToken);
 
-            var result = await RunCliAsync("write-json", jsonPath, dicomPath);
+            var result = await RunCliAsync("write", jsonPath, dicomPath);
 
             Assert.Equal(1, result.ExitCode);
             Assert.Contains("exceeds US maximum", result.StandardError);
@@ -197,7 +197,7 @@ public sealed class CliIntegrationTests
     }
 
     [Fact]
-    public async Task WriteJson_WithBulkDataUri_ReturnsFailure()
+    public async Task Write_WithBulkDataUri_ReturnsFailure()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-json-");
         try
@@ -210,7 +210,7 @@ public sealed class CliIntegrationTests
                 }
                 """, TestContext.Current.CancellationToken);
 
-            var result = await RunCliAsync("write-json", jsonPath, dicomPath);
+            var result = await RunCliAsync("write", jsonPath, dicomPath);
 
             Assert.Equal(1, result.ExitCode);
             Assert.Contains("unsupported BulkDataURI", result.StandardError);
@@ -223,7 +223,7 @@ public sealed class CliIntegrationTests
     }
 
     [Fact]
-    public async Task WriteJson_WithOddLengthOtherWordInlineBinary_ReturnsFailure()
+    public async Task Write_WithOddLengthOtherWordInlineBinary_ReturnsFailure()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-json-");
         try
@@ -236,7 +236,7 @@ public sealed class CliIntegrationTests
                 }
                 """, TestContext.Current.CancellationToken);
 
-            var result = await RunCliAsync("write-json", jsonPath, dicomPath);
+            var result = await RunCliAsync("write", jsonPath, dicomPath);
 
             Assert.Equal(1, result.ExitCode);
             Assert.Contains("multiple of 2 bytes", result.StandardError);
@@ -249,7 +249,7 @@ public sealed class CliIntegrationTests
     }
 
     [Fact]
-    public async Task WriteJson_WithNonArrayValue_ReturnsFailure()
+    public async Task Write_WithNonArrayValue_ReturnsFailure()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-json-");
         try
@@ -262,7 +262,7 @@ public sealed class CliIntegrationTests
                 }
                 """, TestContext.Current.CancellationToken);
 
-            var result = await RunCliAsync("write-json", jsonPath, dicomPath);
+            var result = await RunCliAsync("write", jsonPath, dicomPath);
 
             Assert.Equal(1, result.ExitCode);
             Assert.Contains("must be an array", result.StandardError);
@@ -275,7 +275,7 @@ public sealed class CliIntegrationTests
     }
 
     [Fact]
-    public async Task WriteJson_WithObjectValueForNonPersonName_ReturnsFailure()
+    public async Task Write_WithObjectValueForNonPersonName_ReturnsFailure()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-json-");
         try
@@ -288,7 +288,7 @@ public sealed class CliIntegrationTests
                 }
                 """, TestContext.Current.CancellationToken);
 
-            var result = await RunCliAsync("write-json", jsonPath, dicomPath);
+            var result = await RunCliAsync("write", jsonPath, dicomPath);
 
             Assert.Equal(1, result.ExitCode);
             Assert.Contains("only supported for PN VR", result.StandardError);
