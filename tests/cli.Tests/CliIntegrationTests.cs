@@ -1,9 +1,17 @@
 using System.Diagnostics;
+using FellowOakDicom;
 
 namespace cli.Tests;
 
 public sealed class CliIntegrationTests
 {
+    static CliIntegrationTests()
+    {
+        new DicomSetupBuilder()
+            .RegisterServices(s => s.AddFellowOakDicom())
+            .Build();
+    }
+
     [Fact]
     public async Task MissingFile_ReturnsFailureAndErrorMessage()
     {
@@ -16,16 +24,24 @@ public sealed class CliIntegrationTests
     [Fact]
     public async Task SampleDicom_WithJsonFormat_WritesJsonOutput()
     {
-        var repoRoot = GetRepoRoot();
-        var sampleFile = Path.Combine(repoRoot, "0002.DCM");
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-sample-");
+        try
+        {
+            var sampleFile = Path.Combine(workDirectory.FullName, "sample.dcm");
+            await WriteSampleDicomAsync(sampleFile);
 
-        var result = await RunCliAsync(sampleFile, "--format", "json");
+            var result = await RunCliAsync(sampleFile, "--format", "json");
 
-        Assert.Equal(0, result.ExitCode);
-        Assert.Contains("\"00080016\":{\"vr\":\"UI\",\"name\":", result.StandardOutput);
-        Assert.Contains("\"00100010\":{\"vr\":\"PN\",\"name\":", result.StandardOutput);
-        Assert.Contains("\"Value\":[{\"Alphabetic\":", result.StandardOutput);
-        Assert.Empty(result.StandardError);
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("\"00080016\":{\"vr\":\"UI\",\"name\":", result.StandardOutput);
+            Assert.Contains("\"00100010\":{\"vr\":\"PN\",\"name\":", result.StandardOutput);
+            Assert.Contains("\"Value\":[{\"Alphabetic\":", result.StandardOutput);
+            Assert.Empty(result.StandardError);
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
     }
 
     [Fact]
@@ -260,6 +276,22 @@ public sealed class CliIntegrationTests
             process.ExitCode,
             await standardOutputTask,
             await standardErrorTask);
+    }
+
+    private static Task WriteSampleDicomAsync(string sampleFile)
+    {
+        var dataset = new DicomDataset
+        {
+            { DicomTag.SOPClassUID, DicomUID.CTImageStorage },
+            { DicomTag.SOPInstanceUID, DicomUID.Generate() },
+            { DicomTag.Modality, "CT" },
+            { DicomTag.PatientName, "Doe^Jane" },
+            { DicomTag.PatientID, "12345" },
+            { DicomTag.StudyInstanceUID, DicomUID.Generate() },
+            { DicomTag.SeriesInstanceUID, DicomUID.Generate() }
+        };
+
+        return new DicomFile(dataset).SaveAsync(sampleFile);
     }
 
     private static string GetRepoRoot()
