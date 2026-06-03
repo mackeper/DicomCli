@@ -391,6 +391,12 @@ static void AddValueAttribute(DicomDataset dataset, DicomTag tag, DicomVR vr, Js
         return;
     }
 
+    if (vr == DicomVR.AT)
+    {
+        dataset.AddOrUpdate(tag, values.EnumerateArray().Select(value => ParseDicomTag(GetDicomwebStringValue(tag, vr, value))).ToArray());
+        return;
+    }
+
     dataset.AddOrUpdate(vr, tag, values.EnumerateArray().Select(value => GetDicomwebStringValue(tag, vr, value)).ToArray());
 }
 
@@ -498,7 +504,7 @@ static int ProcessDicomFile(string filePath, string format, string binaryFormat)
     var transferSyntaxName = file.FileMetaInfo?.TransferSyntax?.UID?.Name ?? "Unknown";
     if (format == "json")
     {
-        WriteJsonOutput(dataset, transferSyntaxName, binaryFormat);
+        WriteJsonOutput(dataset);
         return 0;
     }
 
@@ -510,15 +516,138 @@ static int ProcessDicomFile(string filePath, string format, string binaryFormat)
     return 0;
 }
 
-static void WriteJsonOutput(DicomDataset dataset, string transferSyntaxName, string binaryFormat)
+static void WriteJsonOutput(DicomDataset dataset)
 {
-    var output = new
-    {
-        transferSyntax = transferSyntaxName,
-        tags = GetJsonDataset(dataset, binaryFormat)
-    };
+    Console.WriteLine(JsonSerializer.Serialize(GetDicomwebJsonDataset(dataset)));
+}
 
-    Console.WriteLine(JsonSerializer.Serialize(output));
+static SortedDictionary<string, object> GetDicomwebJsonDataset(DicomDataset dataset)
+{
+    return new SortedDictionary<string, object>(dataset.ToDictionary(
+        item => GetDicomwebTag(item.Tag),
+        item => GetDicomwebJsonAttribute(item, dataset)));
+}
+
+static object GetDicomwebJsonAttribute(DicomItem item, DicomDataset dataset)
+{
+    if (item is DicomSequence seq)
+    {
+        return new
+        {
+            vr = item.ValueRepresentation.Code,
+            name = GetDicomwebName(item),
+            Value = seq.Items.Select(GetDicomwebJsonDataset)
+        };
+    }
+
+    if (item is DicomFragmentSequence frag)
+    {
+        return new
+        {
+            vr = item.ValueRepresentation.Code,
+            name = GetDicomwebName(item),
+            InlineBinary = GetDicomwebFragmentInlineBinary(frag)
+        };
+    }
+
+    if (item is DicomElement elem && IsBinaryVR(elem.ValueRepresentation))
+    {
+        return new
+        {
+            vr = item.ValueRepresentation.Code,
+            name = GetDicomwebName(item),
+            InlineBinary = GetDicomwebInlineBinary(elem)
+        };
+    }
+
+    return new
+    {
+        vr = item.ValueRepresentation.Code,
+        name = GetDicomwebName(item),
+        Value = GetDicomwebJsonValues(item, dataset)
+    };
+}
+
+static string GetDicomwebTag(DicomTag tag) => $"{tag.Group:X4}{tag.Element:X4}";
+
+static string GetDicomwebName(DicomItem item) => item.Tag.DictionaryEntry?.Name ?? item.Tag.ToString();
+
+static object[] GetDicomwebJsonValues(DicomItem item, DicomDataset dataset)
+{
+    if (item.ValueRepresentation == DicomVR.PN)
+    {
+        return dataset.GetValues<string>(item.Tag).Select(GetDicomwebPersonNameValue).ToArray();
+    }
+
+    if (item.ValueRepresentation == DicomVR.US)
+    {
+        return dataset.GetValues<ushort>(item.Tag).Cast<object>().ToArray();
+    }
+
+    if (item.ValueRepresentation == DicomVR.SS)
+    {
+        return dataset.GetValues<short>(item.Tag).Cast<object>().ToArray();
+    }
+
+    if (item.ValueRepresentation == DicomVR.UL)
+    {
+        return dataset.GetValues<uint>(item.Tag).Cast<object>().ToArray();
+    }
+
+    if (item.ValueRepresentation == DicomVR.SL)
+    {
+        return dataset.GetValues<int>(item.Tag).Cast<object>().ToArray();
+    }
+
+    if (item.ValueRepresentation == DicomVR.FL)
+    {
+        return dataset.GetValues<float>(item.Tag).Cast<object>().ToArray();
+    }
+
+    if (item.ValueRepresentation == DicomVR.FD)
+    {
+        return dataset.GetValues<double>(item.Tag).Cast<object>().ToArray();
+    }
+
+    if (item.ValueRepresentation == DicomVR.AT)
+    {
+        return dataset.GetValues<DicomTag>(item.Tag).Select(tag => (object)GetDicomwebTag(tag)).ToArray();
+    }
+
+    return dataset.GetValues<string>(item.Tag).Cast<object>().ToArray();
+}
+
+static object GetDicomwebPersonNameValue(string value)
+{
+    var components = value.Split('=', 3);
+    var personName = new Dictionary<string, string>();
+
+    if (!string.IsNullOrEmpty(components[0]))
+    {
+        personName["Alphabetic"] = components[0];
+    }
+
+    if (components.Length > 1 && !string.IsNullOrEmpty(components[1]))
+    {
+        personName["Ideographic"] = components[1];
+    }
+
+    if (components.Length > 2 && !string.IsNullOrEmpty(components[2]))
+    {
+        personName["Phonetic"] = components[2];
+    }
+
+    return personName;
+}
+
+static string GetDicomwebInlineBinary(DicomElement elem)
+{
+    return Convert.ToBase64String(elem.Buffer?.Data ?? Array.Empty<byte>());
+}
+
+static string GetDicomwebFragmentInlineBinary(DicomFragmentSequence frag)
+{
+    return Convert.ToBase64String(frag.Fragments.SelectMany(b => b?.Data ?? Array.Empty<byte>()).ToArray());
 }
 
 static void WriteTextDataset(DicomDataset dataset, int indent, string binaryFormat)
@@ -558,45 +687,11 @@ static string GetTextValueString(DicomItem item, DicomDataset dataset, string bi
     };
 }
 
-static IEnumerable<object> GetJsonDataset(DicomDataset dataset, string binaryFormat)
-{
-    return dataset.Select(item => new
-    {
-        group = item.Tag.Group.ToString("X4"),
-        element = item.Tag.Element.ToString("X4"),
-        name = item.Tag.DictionaryEntry?.Name ?? item.Tag.ToString(),
-        value = GetJsonValue(item, dataset, binaryFormat)
-    });
-}
-
-static object GetJsonValue(DicomItem item, DicomDataset dataset, string binaryFormat)
-{
-    return item switch
-    {
-        DicomSequence seq => new
-        {
-            items = seq.Items.Select(item => GetJsonDataset(item, binaryFormat))
-        },
-        DicomFragmentSequence frag => GetJsonFragmentValue(frag, binaryFormat),
-        DicomElement elem => GetElementValueString(elem, dataset, binaryFormat),
-        _ => "[unknown]"
-    };
-}
-
 static string GetTextFragmentValueString(DicomFragmentSequence frag, string binaryFormat)
 {
     return binaryFormat switch
     {
         "hex" => $"[{string.Join(", ", frag.Fragments.Select(b => Convert.ToHexString(b?.Data ?? Array.Empty<byte>())))}]",
-        _ => GetBinarySummary(frag.Fragments.Sum(b => b?.Size ?? 0))
-    };
-}
-
-static object GetJsonFragmentValue(DicomFragmentSequence frag, string binaryFormat)
-{
-    return binaryFormat switch
-    {
-        "hex" => frag.Fragments.Select(b => Convert.ToHexString(b?.Data ?? Array.Empty<byte>())).ToArray(),
         _ => GetBinarySummary(frag.Fragments.Sum(b => b?.Size ?? 0))
     };
 }

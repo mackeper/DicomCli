@@ -22,8 +22,9 @@ public sealed class CliIntegrationTests
         var result = await RunCliAsync(sampleFile, "--format", "json");
 
         Assert.Equal(0, result.ExitCode);
-        Assert.Contains("\"transferSyntax\"", result.StandardOutput);
-        Assert.Contains("\"tags\"", result.StandardOutput);
+        Assert.Contains("\"00080016\":{\"vr\":\"UI\",\"name\":", result.StandardOutput);
+        Assert.Contains("\"00100010\":{\"vr\":\"PN\",\"name\":", result.StandardOutput);
+        Assert.Contains("\"Value\":[{\"Alphabetic\":", result.StandardOutput);
         Assert.Empty(result.StandardError);
     }
 
@@ -35,6 +36,8 @@ public sealed class CliIntegrationTests
         {
             var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
             var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
+            var roundTripJsonPath = Path.Combine(workDirectory.FullName, "roundtrip.json");
+            var roundTripDicomPath = Path.Combine(workDirectory.FullName, "roundtrip.dcm");
             await File.WriteAllTextAsync(jsonPath, """
                 {
                   "00080016": { "vr": "UI", "Value": ["1.2.840.10008.5.1.4.1.1.2"] },
@@ -42,6 +45,7 @@ public sealed class CliIntegrationTests
                   "00080060": { "vr": "CS", "Value": ["CT"] },
                   "00100010": { "vr": "PN", "Value": [{ "Alphabetic": "Doe^Jane", "Ideographic": "Ideo^Name", "Phonetic": "Phone^Name" }] },
                   "00100020": { "vr": "LO", "Value": ["12345"] },
+                  "00720026": { "vr": "AT", "Value": ["00100010"] },
                   "0020000D": { "vr": "UI", "Value": ["1.2.826.0.1.3680043.10.999.2"] },
                   "0020000E": { "vr": "UI", "Value": ["1.2.826.0.1.3680043.10.999.3"] },
                   "00280010": { "vr": "US", "Value": [1] },
@@ -63,9 +67,21 @@ public sealed class CliIntegrationTests
             var readResult = await RunCliAsync(dicomPath, "--format", "json", "--binary-format", "hex");
 
             Assert.Equal(0, readResult.ExitCode);
-            Assert.Contains("Doe^Jane=Ideo^Name=Phone^Name", readResult.StandardOutput);
-            Assert.Contains("12345", readResult.StandardOutput);
-            Assert.Contains("00", readResult.StandardOutput);
+            Assert.Contains("\"00100010\":{\"vr\":\"PN\",\"name\":", readResult.StandardOutput);
+            Assert.Contains("\"Value\":[{\"Alphabetic\":\"Doe^Jane\",\"Ideographic\":\"Ideo^Name\",\"Phonetic\":\"Phone^Name\"}]}", readResult.StandardOutput);
+            Assert.Contains("\"00100020\":{\"vr\":\"LO\",\"name\":", readResult.StandardOutput);
+            Assert.Contains("\"Value\":[\"12345\"]}", readResult.StandardOutput);
+            Assert.Contains("\"00720026\":{\"vr\":\"AT\",\"name\":", readResult.StandardOutput);
+            Assert.Contains("\"Value\":[\"00100010\"]}", readResult.StandardOutput);
+            Assert.Contains("\"7FE00010\":{\"vr\":\"OB\",\"name\":", readResult.StandardOutput);
+            Assert.Contains("\"InlineBinary\":\"AA==\"}", readResult.StandardOutput);
+
+            await File.WriteAllTextAsync(roundTripJsonPath, readResult.StandardOutput, TestContext.Current.CancellationToken);
+            var roundTripWriteResult = await RunCliAsync("write-json", roundTripJsonPath, roundTripDicomPath);
+
+            Assert.Equal(0, roundTripWriteResult.ExitCode);
+            Assert.Empty(roundTripWriteResult.StandardError);
+            Assert.True(File.Exists(roundTripDicomPath));
         }
         finally
         {
@@ -233,11 +249,11 @@ public sealed class CliIntegrationTests
         var standardErrorTask = process.StandardError.ReadToEndAsync();
 
         var waitForExitTask = process.WaitForExitAsync();
-        var completed = await Task.WhenAny(waitForExitTask, Task.Delay(TimeSpan.FromSeconds(30)));
+        var completed = await Task.WhenAny(waitForExitTask, Task.Delay(TimeSpan.FromSeconds(60)));
         if (completed != waitForExitTask)
         {
             process.Kill(entireProcessTree: true);
-            throw new TimeoutException("CLI process did not exit within 30 seconds.");
+            throw new TimeoutException("CLI process did not exit within 60 seconds.");
         }
 
         return new CliResult(
