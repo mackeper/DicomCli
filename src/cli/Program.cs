@@ -32,7 +32,6 @@ var formatOption = new Option<string>(
 
 var binaryFormatOption = new Option<string>(
     aliases: ["--binary-format"],
-    getDefaultValue: () => "base64",
     description: "Binary value format: base64, summary, or hex")
     .FromAmong("base64", "summary", "hex");
 
@@ -47,7 +46,7 @@ readCommand.SetHandler(context =>
 {
     var filePath = context.ParseResult.GetValueForArgument(readFileArgument);
     var format = context.ParseResult.GetValueForOption(formatOption) ?? "text";
-    var binaryFormat = context.ParseResult.GetValueForOption(binaryFormatOption) ?? "base64";
+    var binaryFormat = ResolveBinaryFormatDefault(format, context.ParseResult.GetValueForOption(binaryFormatOption));
 
     context.ExitCode = ProcessDicomFile(filePath, format, binaryFormat);
 });
@@ -76,7 +75,7 @@ rootCommand.SetHandler((InvocationContext context) =>
 {
     var filePath = context.ParseResult.GetValueForArgument(readFileArgument);
     var format = context.ParseResult.GetValueForOption(formatOption) ?? "text";
-    var binaryFormat = context.ParseResult.GetValueForOption(binaryFormatOption) ?? "base64";
+    var binaryFormat = ResolveBinaryFormatDefault(format, context.ParseResult.GetValueForOption(binaryFormatOption));
 
     context.ExitCode = ProcessDicomFile(filePath, format, binaryFormat);
 });
@@ -135,6 +134,11 @@ static int WriteDicomFileFromJson(string inputPath, string outputPath)
         Console.Error.WriteLine($"Failed to parse DICOMweb JSON: {ex.Message}");
         return 1;
     }
+}
+
+static string ResolveBinaryFormatDefault(string format, string? binaryFormat)
+{
+    return binaryFormat ?? (format == "json" ? "base64" : "summary");
 }
 
 static DicomDataset ReadDicomwebDataset(JsonElement datasetElement)

@@ -115,7 +115,7 @@ public sealed class CliIntegrationTests
     }
 
     [Fact]
-    public async Task ReadText_WithBinaryData_DefaultsToBase64AndSupportsExplicitBase64()
+    public async Task ReadText_WithBinaryData_DefaultsToSummaryAndSupportsExplicitBase64()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-binary-");
         try
@@ -141,14 +141,18 @@ public sealed class CliIntegrationTests
 
             var defaultResult = await RunCliAsync(dicomPath);
             var base64Result = await RunCliAsync(dicomPath, "--binary-format", "base64");
+            var jsonBase64Result = await RunCliAsync(dicomPath, "--format", "json", "--binary-format", "base64");
 
             Assert.Equal(0, defaultResult.ExitCode);
-            Assert.Contains("AAECAw==", defaultResult.StandardOutput);
-            Assert.DoesNotContain("[4 bytes]", defaultResult.StandardOutput);
+            Assert.Contains("[4 bytes]", defaultResult.StandardOutput);
+            Assert.DoesNotContain("AAECAw==", defaultResult.StandardOutput);
             Assert.Equal(0, base64Result.ExitCode);
             Assert.Contains("AAECAw==", base64Result.StandardOutput);
+            Assert.Equal(0, jsonBase64Result.ExitCode);
+            Assert.Contains("\"InlineBinary\":\"AAECAw==\"", jsonBase64Result.StandardOutput);
             Assert.Empty(defaultResult.StandardError);
             Assert.Empty(base64Result.StandardError);
+            Assert.Empty(jsonBase64Result.StandardError);
         }
         finally
         {
