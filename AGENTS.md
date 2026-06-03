@@ -1,30 +1,39 @@
 # DicomCli
 
-.NET 10 CLI tool that reads DICOM files and prints their dataset tags. Uses `fo-dicom` 5.2.6.
+.NET 10 CLI. Reads DICOM, prints tags as text or DICOMweb JSON. Writes DICOM from DICOMweb JSON. Uses `fo-dicom` 5.2.6.
 
 ## Commands
 
-- `make run` — runs the CLI (sets `DOTNET_GCHeapHardLimit=7C0000000` for 2 GB heap cap)
-- `make build` — builds the project
-- `make format` — formats the code
+- `make run` - run CLI with 2 GB heap cap
+- `make build` - build solution with 2 GB heap cap
+- `make format` - format solution with 2 GB heap cap
+- `make publish` - publish linux-arm64 single binary to `bin/cli`
+- `dotnet test` - run xUnit v3 tests via MTP
+
+## CLI
+
+- `read <file>` or `<file>` - read DICOM file
+- `--format text|json` - output text default or DICOMweb JSON
+- `--binary-format summary|hex` - binary output summary default or base64/hex detail
+- `write-json <input-json> <output-dicom>` - write DICOM from DICOMweb JSON
 
 ## Structure
 
-- `src/cli/` — single project, entry point `src/cli/Program.cs`
-- `DicomCli.slnx` — solution file (single project)
-- `0002.DCM` — sample DICOM file in repo root
+- `src/cli/` - CLI project, entry `Program.cs`
+- `tests/cli.Tests/` - integration tests
+- `DicomCli.slnx` - solution
+- `0002.DCM` - sample DICOM
+- `global.json` - use Microsoft Testing Platform
 
 <developer-review-loop>
 ## Developer/Reviewer Loop
 
-For every code change (one logical unit: feature, fix, or refactor), follow this cycle:
+Every code change, one logical unit:
 
-1. **Implement** the change
-2. **Validate**: run `make build`, then `make format`
-   - If any step fails, fix and re-run before proceeding
-3. **Review**: call a subagent via the `task` tool with `subagent_type` set to `Reviewer1` or `Reviewer2`
-4. **Act**: apply reviewer suggestions that improve correctness, style, or architecture
-   - If no suggestions, skip to step 6
-5. **Re-validate**: run `make build` and `make format` again after applying changes
-6. **Repeat** steps 3-5 maximum 3 times per change, or until reviewer has no further suggestions
+1. Implement.
+2. Validate: `make build`, then `make format`. Failure -> fix + rerun.
+3. Review: call `task` with `Reviewer1` or `Reviewer2`.
+4. Act: apply good correctness/style/arch suggestions.
+5. Re-validate after edits.
+6. Repeat review loop max 3 times, or until no findings.
 </developer-review-loop>
