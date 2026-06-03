@@ -13,6 +13,15 @@ public sealed class CliIntegrationTests
     }
 
     [Fact]
+    public async Task NoFile_ReturnsParseError()
+    {
+        var result = await RunCliAsync();
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("Required argument missing for command", result.StandardError);
+    }
+
+    [Fact]
     public async Task MissingFile_ReturnsFailureAndErrorMessage()
     {
         var result = await RunCliAsync("does-not-exist.dcm");

@@ -11,7 +11,10 @@ new DicomSetupBuilder()
 
 var readFileArgument = new Argument<string>(
     name: "file",
-    description: "Path to DICOM file");
+    description: "Path to DICOM file")
+{
+    Arity = ArgumentArity.ExactlyOne
+};
 
 var jsonInputArgument = new Argument<string>(
     name: "input-json",
