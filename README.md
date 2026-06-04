@@ -6,11 +6,10 @@ Uses `fo-dicom` 5.2.6 and `System.CommandLine`.
 
 ## Usage
 
-- `dotnet run --project src/cli -- read <file>` reads a DICOM file.
-- `dotnet run --project src/cli -- <file>` also reads a DICOM file.
+- `dotnet run --project src/cli -- <file>` reads a DICOM file (`.dcm` or `.dicom`).
 - `--format text|json` selects text output or DICOMweb JSON output.
-- `--binary-format summary|hex` controls binary value output.
-- `dotnet run --project src/cli -- write <input-json> <output-dicom>` writes DICOM from DICOMweb JSON.
+- `--binary-format summary|hex|base64` controls binary value output.
+- `dotnet run --project src/cli -- <input-json> -o <output-dicom>` writes DICOM from DICOMweb JSON (`.json` to `.dcm` or `.dicom`).
 
 ## Commands
 

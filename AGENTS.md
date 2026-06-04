@@ -12,10 +12,10 @@
 
 ## CLI
 
-- `read <file>` or `<file>` - read DICOM file
+- `<file>` - read DICOM file (`.dcm` or `.dicom`)
 - `--format text|json` - output text default or DICOMweb JSON
-- `--binary-format summary|hex` - binary output summary default or base64/hex detail
-- `write <input-json> <output-dicom>` - write DICOM from DICOMweb JSON
+- `--binary-format summary|hex|base64` - binary output summary default or hex/base64 detail
+- `<input-json> -o|--output <output-dicom>` - write DICOM from DICOMweb JSON (`.json` to `.dcm` or `.dicom`)
 
 ## Structure
 

@@ -5,20 +5,12 @@ public static class DicomCliCommands
 {
     public static RootCommand Build(TextWriter output, TextWriter error)
     {
-        var readFileArgument = new Argument<string>(
+        var fileArgument = new Argument<string>(
             name: "file",
-            description: "Path to DICOM file")
+            description: "Path to input DICOM or DICOMweb JSON file")
         {
             Arity = ArgumentArity.ExactlyOne
         };
-
-        var jsonInputArgument = new Argument<string>(
-            name: "input-json",
-            description: "Path to DICOMweb JSON file");
-
-        var dicomOutputArgument = new Argument<string>(
-            name: "output-dicom",
-            description: "Path to output DICOM file");
 
         var formatOption = new Option<string>(
             aliases: ["-f", "--format"],
@@ -28,51 +20,65 @@ public static class DicomCliCommands
 
         var binaryFormatOption = new Option<string>(
             aliases: ["--binary-format"],
-            description: "Binary value format: base64, summary, or hex")
-            .FromAmong("base64", "summary", "hex");
+            description: "Binary value format: summary, hex, or base64")
+            .FromAmong("summary", "hex", "base64");
 
-        var readCommand = new Command("read", "Reads a DICOM file and prints dataset tags")
-        {
-            readFileArgument,
-            formatOption,
-            binaryFormatOption
-        };
-
-        readCommand.SetHandler(context =>
-        {
-            context.ExitCode = ExecuteReadFromContext(context, readFileArgument, formatOption, binaryFormatOption, output, error);
-        });
-
-        var writeCommand = new Command("write", "Reads DICOMweb JSON and writes a DICOM file")
-        {
-            jsonInputArgument,
-            dicomOutputArgument
-        };
-
-        writeCommand.SetHandler(context =>
-        {
-            var inputPath = context.ParseResult.GetValueForArgument(jsonInputArgument);
-            var outputPath = context.ParseResult.GetValueForArgument(dicomOutputArgument);
-
-            context.ExitCode = DicomCliApp.ExecuteWrite(inputPath, outputPath, error);
-        });
+        var outputOption = new Option<string?>(
+            aliases: ["-o", "--output"],
+            description: "Path to output DICOM file. When present, input file must be DICOMweb JSON.");
 
         var rootCommand = new RootCommand("Reads DICOM files and writes DICOM files from DICOMweb JSON")
         {
-            readCommand,
-            writeCommand
+            fileArgument,
+            formatOption,
+            binaryFormatOption,
+            outputOption
         };
 
         rootCommand.SetHandler((InvocationContext context) =>
         {
-            context.ExitCode = ExecuteReadFromContext(context, readFileArgument, formatOption, binaryFormatOption, output, error);
+            var outputPath = context.ParseResult.GetValueForOption(outputOption);
+            if (context.ParseResult.FindResultFor(outputOption)?.Tokens.Count > 0)
+            {
+                if (string.IsNullOrWhiteSpace(outputPath))
+                {
+                    error.WriteLine("-o/--output requires an output DICOM path.");
+                    context.ExitCode = 1;
+                    return;
+                }
+
+                context.ExitCode = ExecuteWriteFromContext(context, fileArgument, formatOption, binaryFormatOption, outputPath, error);
+                return;
+            }
+
+            context.ExitCode = ExecuteReadFromContext(context, fileArgument, formatOption, binaryFormatOption, output, error);
         });
 
-        rootCommand.AddArgument(readFileArgument);
-        rootCommand.AddOption(formatOption);
-        rootCommand.AddOption(binaryFormatOption);
-
         return rootCommand;
+    }
+
+    private static int ExecuteWriteFromContext(
+        InvocationContext context,
+        Argument<string> fileArg,
+        Option<string> formatOpt,
+        Option<string> binaryOpt,
+        string outputPath,
+        TextWriter error)
+    {
+        if (context.ParseResult.FindResultFor(formatOpt)?.Tokens.Count > 0)
+        {
+            error.WriteLine("--format cannot be used when writing with -o/--output.");
+            return 1;
+        }
+
+        if (context.ParseResult.FindResultFor(binaryOpt)?.Tokens.Count > 0)
+        {
+            error.WriteLine("--binary-format cannot be used when writing with -o/--output.");
+            return 1;
+        }
+
+        var inputPath = context.ParseResult.GetValueForArgument(fileArg);
+        return DicomCliApp.ExecuteWrite(inputPath, outputPath, error);
     }
 
     private static int ExecuteReadFromContext(

@@ -36,7 +36,7 @@ public sealed class CliIntegrationTests
             var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
             await File.WriteAllTextAsync(jsonPath, TestDicomFiles.MinimalCtJson, TestContext.Current.CancellationToken);
 
-            var result = await RunCliAsync("write", jsonPath, dicomPath);
+            var result = await RunCliAsync(jsonPath, "-o", dicomPath);
 
             Assert.Equal(0, result.ExitCode);
             Assert.Empty(result.StandardError);

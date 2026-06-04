@@ -5,12 +5,25 @@ public static class DicomCliApp
 {
     public static int ExecuteWrite(string inputPath, string outputPath, TextWriter error)
     {
+        if (!HasExtension(inputPath, ".json"))
+        {
+            error.WriteLine("Input file for write mode must have extension .json.");
+            return 1;
+        }
+
+        if (!HasDicomExtension(outputPath))
+        {
+            error.WriteLine("Output file for write mode must have extension .dcm or .dicom.");
+            return 1;
+        }
+
         if (!File.Exists(inputPath))
         {
             error.WriteLine($"File not found: {inputPath}");
             return 1;
         }
 
+        DicomDataset dataset;
         try
         {
             using var stream = File.OpenRead(inputPath);
@@ -21,15 +34,39 @@ public static class DicomCliApp
                 return 1;
             }
 
-            var dataset = DicomwebJsonReader.Read(document.RootElement);
-            var file = new DicomFile(dataset);
-            file.Save(outputPath);
-            return 0;
+            dataset = DicomwebJsonReader.Read(document.RootElement);
         }
         catch (JsonException ex)
         {
             error.WriteLine($"Failed to parse JSON file: {ex.Message}");
             return 1;
+        }
+        catch (IOException ex)
+        {
+            error.WriteLine($"Failed to read JSON file: {ex.Message}");
+            return 1;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            error.WriteLine($"Failed to read JSON file: {ex.Message}");
+            return 1;
+        }
+        catch (DicomException ex)
+        {
+            error.WriteLine($"Failed to create DICOM file: {ex.Message}");
+            return 1;
+        }
+        catch (FormatException ex)
+        {
+            error.WriteLine($"Failed to parse DICOMweb JSON: {ex.Message}");
+            return 1;
+        }
+
+        try
+        {
+            var file = new DicomFile(dataset);
+            file.Save(outputPath);
+            return 0;
         }
         catch (IOException ex)
         {
@@ -43,12 +80,7 @@ public static class DicomCliApp
         }
         catch (DicomException ex)
         {
-            error.WriteLine($"Failed to create DICOM file: {ex.Message}");
-            return 1;
-        }
-        catch (FormatException ex)
-        {
-            error.WriteLine($"Failed to parse DICOMweb JSON: {ex.Message}");
+            error.WriteLine($"Failed to write DICOM file: {ex.Message}");
             return 1;
         }
     }
@@ -78,6 +110,12 @@ public static class DicomCliApp
 
     private static int ExecuteReadCore(string filePath, OutputFormat format, BinaryFormat binaryFormat, TextWriter output, TextWriter error)
     {
+        if (!HasDicomExtension(filePath))
+        {
+            error.WriteLine("Input file for read mode must have extension .dcm or .dicom.");
+            return 1;
+        }
+
         if (!File.Exists(filePath))
         {
             error.WriteLine($"File not found: {filePath}");
@@ -120,5 +158,15 @@ public static class DicomCliApp
     internal static string ResolveBinaryFormatDefault(string format, string? binaryFormat)
     {
         return binaryFormat ?? (format == "json" ? "base64" : "summary");
+    }
+
+    internal static bool HasDicomExtension(string path)
+    {
+        return HasExtension(path, ".dcm") || HasExtension(path, ".dicom");
+    }
+
+    private static bool HasExtension(string path, string extension)
+    {
+        return string.Equals(Path.GetExtension(path), extension, StringComparison.OrdinalIgnoreCase);
     }
 }

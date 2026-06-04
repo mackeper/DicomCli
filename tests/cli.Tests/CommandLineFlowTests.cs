@@ -26,8 +26,31 @@ public sealed class CommandLineFlowTests
         }
     }
 
+    [Theory]
+    [InlineData("sample.DCM")]
+    [InlineData("sample.DICOM")]
+    public async Task ImplicitRead_WithUppercaseDicomExtension_InvokesReadFlow(string fileName)
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
+        try
+        {
+            var sampleFile = Path.Combine(workDirectory.FullName, fileName);
+            await TestDicomFiles.WriteSampleDicomAsync(sampleFile);
+
+            var result = await ExecuteCommandAsync(sampleFile, "--format", "json");
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("\"00100010\":{\"vr\":\"PN\",\"name\":", result.Output);
+            Assert.Empty(result.Error);
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
     [Fact]
-    public async Task ExplicitRead_WithBinaryFormat_InvokesReadFlow()
+    public async Task Read_WithBinaryFormat_InvokesReadFlow()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
         try
@@ -47,11 +70,11 @@ public sealed class CommandLineFlowTests
                   "7FE00010": { "vr": "OB", "InlineBinary": "AAECAw==" }
                 }
                 """, TestContext.Current.CancellationToken);
-            var writeResult = await ExecuteCommandAsync("write", jsonPath, dicomPath);
+            var writeResult = await ExecuteCommandAsync(jsonPath, "-o", dicomPath);
             Assert.Equal(0, writeResult.ExitCode);
 
-            var result = await ExecuteCommandAsync("read", dicomPath, "--binary-format", "base64");
-            var jsonResult = await ExecuteCommandAsync("read", dicomPath, "--format", "json");
+            var result = await ExecuteCommandAsync(dicomPath, "--binary-format", "base64");
+            var jsonResult = await ExecuteCommandAsync(dicomPath, "--format", "json");
 
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("AAECAw==", result.Output);
@@ -67,7 +90,7 @@ public sealed class CommandLineFlowTests
     }
 
     [Fact]
-    public async Task WriteCommand_WithInputAndOutput_InvokesWriteFlow()
+    public async Task OutputOption_WithInputAndOutput_InvokesWriteFlow()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
         try
@@ -76,7 +99,31 @@ public sealed class CommandLineFlowTests
             var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
             await File.WriteAllTextAsync(jsonPath, TestDicomFiles.MinimalCtJson, TestContext.Current.CancellationToken);
 
-            var result = await ExecuteCommandAsync("write", jsonPath, dicomPath);
+            var result = await ExecuteCommandAsync(jsonPath, "-o", dicomPath);
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Empty(result.Error);
+            Assert.True(File.Exists(dicomPath));
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("output.DCM")]
+    [InlineData("output.DICOM")]
+    public async Task OutputLongOption_WithUppercaseExtensions_InvokesWriteFlow(string dicomFileName)
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
+        try
+        {
+            var jsonPath = Path.Combine(workDirectory.FullName, "input.JSON");
+            var dicomPath = Path.Combine(workDirectory.FullName, dicomFileName);
+            await File.WriteAllTextAsync(jsonPath, TestDicomFiles.MinimalCtJson, TestContext.Current.CancellationToken);
+
+            var result = await ExecuteCommandAsync(jsonPath, "--output", dicomPath);
 
             Assert.Equal(0, result.ExitCode);
             Assert.Empty(result.Error);
@@ -91,7 +138,7 @@ public sealed class CommandLineFlowTests
     [Theory]
     [InlineData("--format", "xml")]
     [InlineData("--binary-format", "raw")]
-    public async Task ReadCommand_WithInvalidOptionValue_ReturnsParseFailure(params string[] option)
+    public async Task Read_WithInvalidOptionValue_ReturnsParseFailure(params string[] option)
     {
         var result = await ExecuteCommandAsync(["does-not-exist.dcm", .. option]);
 
@@ -100,12 +147,65 @@ public sealed class CommandLineFlowTests
     }
 
     [Fact]
-    public async Task WriteCommand_WithMissingOutputArgument_ReturnsParseFailure()
+    public async Task OutputOption_WithMissingOutputArgument_ReturnsParseFailure()
     {
-        var result = await ExecuteCommandAsync("write", "input.json");
+        var result = await ExecuteCommandAsync("input.json", "-o");
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.NotEmpty(result.Error);
+    }
+
+    [Theory]
+    [InlineData("read")]
+    [InlineData("write")]
+    public async Task RemovedCommands_ReturnParseFailure(string command)
+    {
+        var result = await ExecuteCommandAsync(command, "input.dcm");
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.NotEmpty(result.Error);
+    }
+
+    [Fact]
+    public async Task Read_WithInvalidInputExtension_ReturnsExtensionErrorBeforeFileNotFound()
+    {
+        var result = await ExecuteCommandAsync("missing.json");
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains(".dcm or .dicom", result.Error);
+        Assert.DoesNotContain("File not found", result.Error);
+    }
+
+    [Fact]
+    public async Task Write_WithInvalidInputExtension_ReturnsExtensionErrorBeforeFileNotFound()
+    {
+        var result = await ExecuteCommandAsync("missing.txt", "-o", "output.dcm");
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains(".json", result.Error);
+        Assert.DoesNotContain("File not found", result.Error);
+    }
+
+    [Fact]
+    public async Task Write_WithInvalidOutputExtension_ReturnsExtensionErrorBeforeFileNotFound()
+    {
+        var result = await ExecuteCommandAsync("missing.json", "-o", "output.txt");
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains(".dcm or .dicom", result.Error);
+        Assert.DoesNotContain("File not found", result.Error);
+    }
+
+    [Theory]
+    [InlineData("--format", "json", "--format cannot be used when writing with -o/--output.")]
+    [InlineData("--binary-format", "base64", "--binary-format cannot be used when writing with -o/--output.")]
+    public async Task Write_WithReadOption_ReturnsFailure(string optionName, string optionValue, string expectedError)
+    {
+        var result = await ExecuteCommandAsync("input.json", "-o", "output.dcm", optionName, optionValue);
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains(expectedError, result.Error);
+        Assert.DoesNotContain("File not found", result.Error);
     }
 
     private static async Task<CommandResult> ExecuteCommandAsync(params string[] arguments)
