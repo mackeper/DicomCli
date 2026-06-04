@@ -40,11 +40,7 @@ public static class DicomCliCommands
 
         readCommand.SetHandler(context =>
         {
-            var filePath = context.ParseResult.GetValueForArgument(readFileArgument);
-            var format = context.ParseResult.GetValueForOption(formatOption) ?? "text";
-            var binaryFormat = DicomCliApp.ResolveBinaryFormatDefault(format, context.ParseResult.GetValueForOption(binaryFormatOption));
-
-            context.ExitCode = DicomCliApp.ExecuteRead(filePath, format, binaryFormat, output, error);
+            context.ExitCode = ExecuteReadFromContext(context, readFileArgument, formatOption, binaryFormatOption, output, error);
         });
 
         var writeCommand = new Command("write", "Reads DICOMweb JSON and writes a DICOM file")
@@ -69,11 +65,7 @@ public static class DicomCliCommands
 
         rootCommand.SetHandler((InvocationContext context) =>
         {
-            var filePath = context.ParseResult.GetValueForArgument(readFileArgument);
-            var format = context.ParseResult.GetValueForOption(formatOption) ?? "text";
-            var binaryFormat = DicomCliApp.ResolveBinaryFormatDefault(format, context.ParseResult.GetValueForOption(binaryFormatOption));
-
-            context.ExitCode = DicomCliApp.ExecuteRead(filePath, format, binaryFormat, output, error);
+            context.ExitCode = ExecuteReadFromContext(context, readFileArgument, formatOption, binaryFormatOption, output, error);
         });
 
         rootCommand.AddArgument(readFileArgument);
@@ -81,5 +73,19 @@ public static class DicomCliCommands
         rootCommand.AddOption(binaryFormatOption);
 
         return rootCommand;
+    }
+
+    private static int ExecuteReadFromContext(
+        InvocationContext context,
+        Argument<string> fileArg,
+        Option<string> formatOpt,
+        Option<string> binaryOpt,
+        TextWriter output,
+        TextWriter error)
+    {
+        var filePath = context.ParseResult.GetValueForArgument(fileArg);
+        var formatStr = context.ParseResult.GetValueForOption(formatOpt) ?? "text";
+        var binaryFormatStr = DicomCliApp.ResolveBinaryFormatDefault(formatStr, context.ParseResult.GetValueForOption(binaryOpt));
+        return DicomCliApp.ExecuteRead(filePath, formatStr, binaryFormatStr, output, error);
     }
 }

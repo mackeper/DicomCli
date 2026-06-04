@@ -82,9 +82,9 @@ public sealed class ReadFlowTests
             var writeResult = ExecuteWrite(jsonPath, dicomPath);
             Assert.Equal(0, writeResult.ExitCode);
 
-            var defaultResult = ExecuteRead(dicomPath, "text", DicomCliApp.ResolveBinaryFormatDefault("text", null));
+            var defaultResult = ExecuteRead(dicomPath, "text", "summary");
             var base64Result = ExecuteRead(dicomPath, "text", "base64");
-            var jsonBase64Result = ExecuteRead(dicomPath, "json", DicomCliApp.ResolveBinaryFormatDefault("json", "base64"));
+            var jsonBase64Result = ExecuteRead(dicomPath, "json", "base64");
 
             Assert.Equal(0, defaultResult.ExitCode);
             Assert.Contains("[4 bytes]", defaultResult.Output);
