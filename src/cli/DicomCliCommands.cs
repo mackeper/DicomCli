@@ -1,8 +1,22 @@
 using System.CommandLine;
+using System.CommandLine.IO;
 using System.CommandLine.Invocation;
+using System.Reflection;
 
 public static class DicomCliCommands
 {
+    public static Task<int> InvokeAsync(string[] args, TextWriter output, TextWriter error)
+    {
+        if (args is ["--version"])
+        {
+            output.WriteLine(GetVersionLine());
+            return Task.FromResult(0);
+        }
+
+        var rootCommand = Build(output, error);
+        return rootCommand.InvokeAsync(args, new TextWriterConsole(output, error));
+    }
+
     public static RootCommand Build(TextWriter output, TextWriter error)
     {
         var fileArgument = new Argument<string>(
@@ -34,6 +48,7 @@ public static class DicomCliCommands
             binaryFormatOption,
             outputOption
         };
+        rootCommand.Name = GetProductName();
 
         rootCommand.SetHandler((InvocationContext context) =>
         {
@@ -93,5 +108,48 @@ public static class DicomCliCommands
         var formatStr = context.ParseResult.GetValueForOption(formatOpt) ?? "text";
         var binaryFormatStr = DicomCliApp.ResolveBinaryFormatDefault(formatStr, context.ParseResult.GetValueForOption(binaryOpt));
         return DicomCliApp.ExecuteRead(filePath, formatStr, binaryFormatStr, output, error);
+    }
+
+    private static string GetProductName()
+    {
+        var assembly = typeof(DicomCliCommands).Assembly;
+        var product = assembly.GetCustomAttribute<AssemblyProductAttribute>()?.Product;
+
+        return NonEmpty(product, "DicomCli");
+    }
+
+    private static string GetVersionLine()
+    {
+        var assembly = typeof(DicomCliCommands).Assembly;
+        var version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? assembly.GetName().Version?.ToString();
+
+        return $"{GetProductName()} {NonEmpty(version, "0.1.0")}";
+    }
+
+    private static string NonEmpty(string? value, string fallback)
+    {
+        return string.IsNullOrWhiteSpace(value) ? fallback : value;
+    }
+
+    private sealed class TextWriterConsole(TextWriter output, TextWriter error) : IConsole
+    {
+        public IStandardStreamWriter Out { get; } = new TextWriterStreamWriter(output);
+
+        public bool IsOutputRedirected => true;
+
+        public IStandardStreamWriter Error { get; } = new TextWriterStreamWriter(error);
+
+        public bool IsErrorRedirected => true;
+
+        public bool IsInputRedirected => true;
+    }
+
+    private sealed class TextWriterStreamWriter(TextWriter writer) : IStandardStreamWriter
+    {
+        public void Write(string? value)
+        {
+            writer.Write(value);
+        }
     }
 }

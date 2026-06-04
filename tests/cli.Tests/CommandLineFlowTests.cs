@@ -1,10 +1,19 @@
-using System.CommandLine;
-using System.CommandLine.IO;
-
 namespace cli.Tests;
 
 public sealed class CommandLineFlowTests
 {
+    [Fact]
+    public async Task VersionOption_PrintsVersionAndExitsSuccessfully()
+    {
+        var result = await ExecuteCommandAsync("--version");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Single(result.Output.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries));
+        Assert.Contains("DicomCli", result.Output);
+        Assert.Contains("0.1.0", result.Output);
+        Assert.Empty(result.Error);
+    }
+
     [Fact]
     public async Task ImplicitRead_WithJsonFormat_InvokesReadFlow()
     {
@@ -213,33 +222,11 @@ public sealed class CommandLineFlowTests
         TestDicomFiles.EnsureDicomSetup();
         using var output = new StringWriter();
         using var error = new StringWriter();
-        var rootCommand = DicomCliCommands.Build(output, error);
 
-        var exitCode = await rootCommand.InvokeAsync(arguments, new TestConsole(output, error));
+        var exitCode = await DicomCliCommands.InvokeAsync(arguments, output, error);
 
         return new CommandResult(exitCode, output.ToString(), error.ToString());
     }
 
     private sealed record CommandResult(int ExitCode, string Output, string Error);
-
-    private sealed class TestConsole(TextWriter output, TextWriter error) : IConsole
-    {
-        public IStandardStreamWriter Out { get; } = new TextWriterStreamWriter(output);
-
-        public bool IsOutputRedirected => true;
-
-        public IStandardStreamWriter Error { get; } = new TextWriterStreamWriter(error);
-
-        public bool IsErrorRedirected => true;
-
-        public bool IsInputRedirected => true;
-    }
-
-    private sealed class TextWriterStreamWriter(TextWriter writer) : IStandardStreamWriter
-    {
-        public void Write(string? value)
-        {
-            writer.Write(value);
-        }
-    }
 }
