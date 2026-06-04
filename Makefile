@@ -9,6 +9,15 @@ build:
 format:
 	DOTNET_GCHeapHardLimit=7C0000000 dotnet format
 
+test:
+	DOTNET_GCHeapHardLimit=7C0000000 dotnet test --solution DicomCli.slnx --configuration Release
+
+check:
+	DOTNET_GCHeapHardLimit=7C0000000 dotnet restore DicomCli.slnx
+	DOTNET_GCHeapHardLimit=7C0000000 dotnet format DicomCli.slnx --verify-no-changes --no-restore
+	DOTNET_GCHeapHardLimit=7C0000000 dotnet build DicomCli.slnx --configuration Release --no-restore
+	DOTNET_GCHeapHardLimit=7C0000000 dotnet test --solution DicomCli.slnx --configuration Release --no-build
+
 publish:
 	DOTNET_GCHeapHardLimit=7C0000000 dotnet publish \
 	  -c Release \

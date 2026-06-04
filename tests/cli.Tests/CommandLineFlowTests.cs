@@ -3,7 +3,7 @@ namespace cli.Tests;
 public sealed class CommandLineFlowTests
 {
     [Fact]
-    public async Task VersionOption_PrintsVersionAndExitsSuccessfully()
+    public async Task VersionOptionPrintsVersionAndExitsSuccessfully()
     {
         var result = await ExecuteCommandAsync("--version");
 
@@ -15,7 +15,7 @@ public sealed class CommandLineFlowTests
     }
 
     [Fact]
-    public async Task ImplicitRead_WithJsonFormat_InvokesReadFlow()
+    public async Task ImplicitReadWithJsonFormatInvokesReadFlow()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
         try
@@ -38,7 +38,7 @@ public sealed class CommandLineFlowTests
     [Theory]
     [InlineData("sample.DCM")]
     [InlineData("sample.DICOM")]
-    public async Task ImplicitRead_WithUppercaseDicomExtension_InvokesReadFlow(string fileName)
+    public async Task ImplicitReadWithUppercaseDicomExtensionInvokesReadFlow(string fileName)
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
         try
@@ -59,7 +59,7 @@ public sealed class CommandLineFlowTests
     }
 
     [Fact]
-    public async Task Read_WithBinaryFormat_InvokesReadFlow()
+    public async Task ReadWithBinaryFormatInvokesReadFlow()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
         try
@@ -99,7 +99,7 @@ public sealed class CommandLineFlowTests
     }
 
     [Fact]
-    public async Task OutputOption_WithInputAndOutput_InvokesWriteFlow()
+    public async Task OutputOptionWithInputAndOutputInvokesWriteFlow()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
         try
@@ -123,7 +123,7 @@ public sealed class CommandLineFlowTests
     [Theory]
     [InlineData("output.DCM")]
     [InlineData("output.DICOM")]
-    public async Task OutputLongOption_WithUppercaseExtensions_InvokesWriteFlow(string dicomFileName)
+    public async Task OutputLongOptionWithUppercaseExtensionsInvokesWriteFlow(string dicomFileName)
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
         try
@@ -147,7 +147,7 @@ public sealed class CommandLineFlowTests
     [Theory]
     [InlineData("--format", "xml")]
     [InlineData("--binary-format", "raw")]
-    public async Task Read_WithInvalidOptionValue_ReturnsParseFailure(params string[] option)
+    public async Task ReadWithInvalidOptionValueReturnsParseFailure(params string[] option)
     {
         var result = await ExecuteCommandAsync(["does-not-exist.dcm", .. option]);
 
@@ -156,7 +156,7 @@ public sealed class CommandLineFlowTests
     }
 
     [Fact]
-    public async Task OutputOption_WithMissingOutputArgument_ReturnsParseFailure()
+    public async Task OutputOptionWithMissingOutputArgumentReturnsParseFailure()
     {
         var result = await ExecuteCommandAsync("input.json", "-o");
 
@@ -167,7 +167,7 @@ public sealed class CommandLineFlowTests
     [Theory]
     [InlineData("read")]
     [InlineData("write")]
-    public async Task RemovedCommands_ReturnParseFailure(string command)
+    public async Task RemovedCommandsReturnParseFailure(string command)
     {
         var result = await ExecuteCommandAsync(command, "input.dcm");
 
@@ -176,7 +176,7 @@ public sealed class CommandLineFlowTests
     }
 
     [Fact]
-    public async Task Read_WithInvalidInputExtension_ReturnsExtensionErrorBeforeFileNotFound()
+    public async Task ReadWithInvalidInputExtensionReturnsExtensionErrorBeforeFileNotFound()
     {
         var result = await ExecuteCommandAsync("missing.json");
 
@@ -186,7 +186,7 @@ public sealed class CommandLineFlowTests
     }
 
     [Fact]
-    public async Task Write_WithInvalidInputExtension_ReturnsExtensionErrorBeforeFileNotFound()
+    public async Task WriteWithInvalidInputExtensionReturnsExtensionErrorBeforeFileNotFound()
     {
         var result = await ExecuteCommandAsync("missing.txt", "-o", "output.dcm");
 
@@ -196,7 +196,7 @@ public sealed class CommandLineFlowTests
     }
 
     [Fact]
-    public async Task Write_WithInvalidOutputExtension_ReturnsExtensionErrorBeforeFileNotFound()
+    public async Task WriteWithInvalidOutputExtensionReturnsExtensionErrorBeforeFileNotFound()
     {
         var result = await ExecuteCommandAsync("missing.json", "-o", "output.txt");
 
@@ -208,7 +208,7 @@ public sealed class CommandLineFlowTests
     [Theory]
     [InlineData("--format", "json", "--format cannot be used when writing with -o/--output.")]
     [InlineData("--binary-format", "base64", "--binary-format cannot be used when writing with -o/--output.")]
-    public async Task Write_WithReadOption_ReturnsFailure(string optionName, string optionValue, string expectedError)
+    public async Task WriteWithReadOptionReturnsFailure(string optionName, string optionValue, string expectedError)
     {
         var result = await ExecuteCommandAsync("input.json", "-o", "output.dcm", optionName, optionValue);
 

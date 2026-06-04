@@ -3,7 +3,7 @@ namespace cli.Tests;
 public sealed class ReadFlowTests
 {
     [Fact]
-    public async Task ReadJson_WithSampleDicom_WritesDicomwebJson()
+    public async Task ReadJsonWithSampleDicomWritesDicomwebJson()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-read-flow-");
         try
@@ -26,7 +26,7 @@ public sealed class ReadFlowTests
     }
 
     [Fact]
-    public void ReadMissingFile_ReturnsFailureAndErrorMessage()
+    public void ReadMissingFileReturnsFailureAndErrorMessage()
     {
         var result = ExecuteRead("does-not-exist.dcm", "text", "summary");
 
@@ -38,7 +38,7 @@ public sealed class ReadFlowTests
     [Theory]
     [InlineData("summary")]
     [InlineData("hex")]
-    public async Task ReadJson_WithNonBase64BinaryFormat_ReturnsFailure(string binaryFormat)
+    public async Task ReadJsonWithNonBase64BinaryFormatReturnsFailure(string binaryFormat)
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-read-flow-");
         try
@@ -59,7 +59,7 @@ public sealed class ReadFlowTests
     }
 
     [Fact]
-    public async Task ReadText_WithBinaryData_UsesRequestedBinaryFormat()
+    public async Task ReadTextWithBinaryDataUsesRequestedBinaryFormat()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-read-flow-");
         try

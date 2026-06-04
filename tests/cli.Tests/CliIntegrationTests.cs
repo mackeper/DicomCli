@@ -5,7 +5,7 @@ namespace cli.Tests;
 public sealed class CliIntegrationTests
 {
     [Fact]
-    public async Task ExecutableRead_WithSampleDicom_WritesJsonOutput()
+    public async Task ExecutableReadWithSampleDicomWritesJsonOutput()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-read-smoke-");
         try
@@ -27,7 +27,7 @@ public sealed class CliIntegrationTests
     }
 
     [Fact]
-    public async Task ExecutableWrite_WithDicomwebJson_WritesReadableDicomFile()
+    public async Task ExecutableWriteWithDicomwebJsonWritesReadableDicomFile()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-write-smoke-");
         try

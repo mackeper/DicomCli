@@ -1,7 +1,7 @@
 using System.Text.Json;
 using FellowOakDicom;
 
-public static class DicomCliApp
+internal static class DicomCliApp
 {
     public static int ExecuteWrite(string inputPath, string outputPath, TextWriter error)
     {

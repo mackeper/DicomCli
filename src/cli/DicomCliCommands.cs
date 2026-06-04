@@ -3,7 +3,7 @@ using System.CommandLine.IO;
 using System.CommandLine.Invocation;
 using System.Reflection;
 
-public static class DicomCliCommands
+internal static class DicomCliCommands
 {
     public static Task<int> InvokeAsync(string[] args, TextWriter output, TextWriter error)
     {

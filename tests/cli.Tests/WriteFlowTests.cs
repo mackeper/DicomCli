@@ -3,7 +3,7 @@ namespace cli.Tests;
 public sealed class WriteFlowTests
 {
     [Fact]
-    public async Task WriteDicomwebJson_WritesReadableDicomAndSupportsRoundTrip()
+    public async Task WriteDicomwebJsonWritesReadableDicomAndSupportsRoundTrip()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-write-flow-");
         try
@@ -51,7 +51,7 @@ public sealed class WriteFlowTests
     [InlineData("{ \"7FE00010\": { \"vr\": \"OW\", \"InlineBinary\": \"AA==\" } }", "multiple of 2 bytes")]
     [InlineData("{ \"00100020\": { \"vr\": \"LO\", \"Value\": \"12345\" } }", "must be an array")]
     [InlineData("{ \"00100020\": { \"vr\": \"LO\", \"Value\": [{ \"Alphabetic\": \"12345\" }] } }", "only supported for PN VR")]
-    public async Task WriteInvalidDicomwebJson_ReturnsFailureWithoutOutputFile(string json, string expectedError)
+    public async Task WriteInvalidDicomwebJsonReturnsFailureWithoutOutputFile(string json, string expectedError)
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-write-flow-");
         try
@@ -73,7 +73,7 @@ public sealed class WriteFlowTests
     }
 
     [Fact]
-    public async Task WriteDicomwebJson_WithUnknownPrivateTag_UsesPrivateCreatorVr()
+    public async Task WriteDicomwebJsonWithUnknownPrivateTagUsesPrivateCreatorVr()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-write-flow-");
         try

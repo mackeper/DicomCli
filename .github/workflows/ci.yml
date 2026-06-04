@@ -28,14 +28,25 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Check
+        if: runner.os != 'Windows'
+        run: make check
+
       - name: Restore
+        if: runner.os == 'Windows'
         run: dotnet restore DicomCli.slnx
 
+      - name: Format
+        if: runner.os == 'Windows'
+        run: dotnet format DicomCli.slnx --verify-no-changes --no-restore
+
       - name: Build
+        if: runner.os == 'Windows'
         run: dotnet build DicomCli.slnx --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test DicomCli.slnx --configuration Release --no-build
+        if: runner.os == 'Windows'
+        run: dotnet test --solution DicomCli.slnx --configuration Release --no-build
 
   publish:
     name: Publish (${{ matrix.runtime }})
