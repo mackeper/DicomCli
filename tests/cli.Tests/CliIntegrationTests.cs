@@ -1,50 +1,23 @@
 using System.Diagnostics;
-using FellowOakDicom;
 
 namespace cli.Tests;
 
 public sealed class CliIntegrationTests
 {
-    static CliIntegrationTests()
-    {
-        new DicomSetupBuilder()
-            .RegisterServices(s => s.AddFellowOakDicom())
-            .Build();
-    }
-
     [Fact]
-    public async Task NoFile_ReturnsParseError()
+    public async Task ExecutableRead_WithSampleDicom_WritesJsonOutput()
     {
-        var result = await RunCliAsync();
-
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("Required argument missing for command", result.StandardError);
-    }
-
-    [Fact]
-    public async Task MissingFile_ReturnsFailureAndErrorMessage()
-    {
-        var result = await RunCliAsync("does-not-exist.dcm");
-
-        Assert.Equal(1, result.ExitCode);
-        Assert.Contains("File not found: does-not-exist.dcm", result.StandardError);
-    }
-
-    [Fact]
-    public async Task SampleDicom_WithJsonFormat_WritesJsonOutput()
-    {
-        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-sample-");
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-read-smoke-");
         try
         {
             var sampleFile = Path.Combine(workDirectory.FullName, "sample.dcm");
-            await WriteSampleDicomAsync(sampleFile);
+            await TestDicomFiles.WriteSampleDicomAsync(sampleFile);
 
             var result = await RunCliAsync(sampleFile, "--format", "json");
 
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("\"00080016\":{\"vr\":\"UI\",\"name\":", result.StandardOutput);
             Assert.Contains("\"00100010\":{\"vr\":\"PN\",\"name\":", result.StandardOutput);
-            Assert.Contains("\"Value\":[{\"Alphabetic\":", result.StandardOutput);
             Assert.Empty(result.StandardError);
         }
         finally
@@ -54,258 +27,20 @@ public sealed class CliIntegrationTests
     }
 
     [Fact]
-    public async Task Write_WithDicomwebJson_WritesReadableDicomFile()
+    public async Task ExecutableWrite_WithDicomwebJson_WritesReadableDicomFile()
     {
-        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-json-");
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-write-smoke-");
         try
         {
             var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
             var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
-            var roundTripJsonPath = Path.Combine(workDirectory.FullName, "roundtrip.json");
-            var roundTripDicomPath = Path.Combine(workDirectory.FullName, "roundtrip.dcm");
-            await File.WriteAllTextAsync(jsonPath, """
-                {
-                  "00080016": { "vr": "UI", "Value": ["1.2.840.10008.5.1.4.1.1.2"] },
-                  "00080018": { "vr": "UI", "Value": ["1.2.826.0.1.3680043.10.999.1"] },
-                  "00080060": { "vr": "CS", "Value": ["CT"] },
-                  "00100010": { "vr": "PN", "Value": [{ "Alphabetic": "Doe^Jane", "Ideographic": "Ideo^Name", "Phonetic": "Phone^Name" }] },
-                  "00100020": { "vr": "LO", "Value": ["12345"] },
-                  "00720026": { "vr": "AT", "Value": ["00100010"] },
-                  "0020000D": { "vr": "UI", "Value": ["1.2.826.0.1.3680043.10.999.2"] },
-                  "0020000E": { "vr": "UI", "Value": ["1.2.826.0.1.3680043.10.999.3"] },
-                  "00280010": { "vr": "US", "Value": [1] },
-                  "00280011": { "vr": "US", "Value": [1] },
-                  "00280100": { "vr": "US", "Value": [8] },
-                  "00280101": { "vr": "US", "Value": [8] },
-                  "00280102": { "vr": "US", "Value": [7] },
-                  "00280103": { "vr": "US", "Value": [0] },
-                  "7FE00010": { "vr": "OB", "InlineBinary": "AA==" }
-                }
-                """, TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(jsonPath, TestDicomFiles.MinimalCtJson, TestContext.Current.CancellationToken);
 
-            var writeResult = await RunCliAsync("write", jsonPath, dicomPath);
+            var result = await RunCliAsync("write", jsonPath, dicomPath);
 
-            Assert.Equal(0, writeResult.ExitCode);
-            Assert.Empty(writeResult.StandardError);
+            Assert.Equal(0, result.ExitCode);
+            Assert.Empty(result.StandardError);
             Assert.True(File.Exists(dicomPath));
-
-            var readResult = await RunCliAsync(dicomPath, "--format", "json");
-
-            Assert.Equal(0, readResult.ExitCode);
-            Assert.Contains("\"00100010\":{\"vr\":\"PN\",\"name\":", readResult.StandardOutput);
-            Assert.Contains("\"Value\":[{\"Alphabetic\":\"Doe^Jane\",\"Ideographic\":\"Ideo^Name\",\"Phonetic\":\"Phone^Name\"}]}", readResult.StandardOutput);
-            Assert.Contains("\"00100020\":{\"vr\":\"LO\",\"name\":", readResult.StandardOutput);
-            Assert.Contains("\"Value\":[\"12345\"]}", readResult.StandardOutput);
-            Assert.Contains("\"00720026\":{\"vr\":\"AT\",\"name\":", readResult.StandardOutput);
-            Assert.Contains("\"Value\":[\"00100010\"]}", readResult.StandardOutput);
-            Assert.Contains("\"7FE00010\":{\"vr\":\"OB\",\"name\":", readResult.StandardOutput);
-            Assert.Contains("\"InlineBinary\":\"AA==\"}", readResult.StandardOutput);
-
-            await File.WriteAllTextAsync(roundTripJsonPath, readResult.StandardOutput, TestContext.Current.CancellationToken);
-            var roundTripWriteResult = await RunCliAsync("write", roundTripJsonPath, roundTripDicomPath);
-
-            Assert.Equal(0, roundTripWriteResult.ExitCode);
-            Assert.Empty(roundTripWriteResult.StandardError);
-            Assert.True(File.Exists(roundTripDicomPath));
-        }
-        finally
-        {
-            workDirectory.Delete(recursive: true);
-        }
-    }
-
-    [Fact]
-    public async Task ReadText_WithBinaryData_DefaultsToSummaryAndSupportsExplicitBase64()
-    {
-        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-binary-");
-        try
-        {
-            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
-            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
-            await File.WriteAllTextAsync(jsonPath, """
-                {
-                  "00080016": { "vr": "UI", "Value": ["1.2.840.10008.5.1.4.1.1.2"] },
-                  "00080018": { "vr": "UI", "Value": ["1.2.826.0.1.3680043.10.999.1"] },
-                  "00280010": { "vr": "US", "Value": [1] },
-                  "00280011": { "vr": "US", "Value": [4] },
-                  "00280100": { "vr": "US", "Value": [8] },
-                  "00280101": { "vr": "US", "Value": [8] },
-                  "00280102": { "vr": "US", "Value": [7] },
-                  "00280103": { "vr": "US", "Value": [0] },
-                  "7FE00010": { "vr": "OB", "InlineBinary": "AAECAw==" }
-                }
-                """, TestContext.Current.CancellationToken);
-
-            var writeResult = await RunCliAsync("write", jsonPath, dicomPath);
-            Assert.Equal(0, writeResult.ExitCode);
-
-            var defaultResult = await RunCliAsync(dicomPath);
-            var base64Result = await RunCliAsync(dicomPath, "--binary-format", "base64");
-            var jsonBase64Result = await RunCliAsync(dicomPath, "--format", "json", "--binary-format", "base64");
-
-            Assert.Equal(0, defaultResult.ExitCode);
-            Assert.Contains("[4 bytes]", defaultResult.StandardOutput);
-            Assert.DoesNotContain("AAECAw==", defaultResult.StandardOutput);
-            Assert.Equal(0, base64Result.ExitCode);
-            Assert.Contains("AAECAw==", base64Result.StandardOutput);
-            Assert.Equal(0, jsonBase64Result.ExitCode);
-            Assert.Contains("\"InlineBinary\":\"AAECAw==\"", jsonBase64Result.StandardOutput);
-            Assert.Empty(defaultResult.StandardError);
-            Assert.Empty(base64Result.StandardError);
-            Assert.Empty(jsonBase64Result.StandardError);
-        }
-        finally
-        {
-            workDirectory.Delete(recursive: true);
-        }
-    }
-
-    [Theory]
-    [InlineData("summary")]
-    [InlineData("hex")]
-    public async Task ReadJson_WithNonBase64BinaryFormat_ReturnsFailure(string binaryFormat)
-    {
-        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-binary-");
-        try
-        {
-            var sampleFile = Path.Combine(workDirectory.FullName, "sample.dcm");
-            await WriteSampleDicomAsync(sampleFile);
-
-            var result = await RunCliAsync(sampleFile, "--format", "json", "--binary-format", binaryFormat);
-
-            Assert.Equal(1, result.ExitCode);
-            Assert.Contains($"--binary-format {binaryFormat} cannot be used with --format json", result.StandardError);
-            Assert.Empty(result.StandardOutput);
-        }
-        finally
-        {
-            workDirectory.Delete(recursive: true);
-        }
-    }
-
-    [Fact]
-    public async Task Write_WithOutOfRangeUnsignedShort_ReturnsFailure()
-    {
-        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-json-");
-        try
-        {
-            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
-            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
-            await File.WriteAllTextAsync(jsonPath, """
-                {
-                  "00280010": { "vr": "US", "Value": [70000] }
-                }
-                """, TestContext.Current.CancellationToken);
-
-            var result = await RunCliAsync("write", jsonPath, dicomPath);
-
-            Assert.Equal(1, result.ExitCode);
-            Assert.Contains("exceeds US maximum", result.StandardError);
-            Assert.False(File.Exists(dicomPath));
-        }
-        finally
-        {
-            workDirectory.Delete(recursive: true);
-        }
-    }
-
-    [Fact]
-    public async Task Write_WithBulkDataUri_ReturnsFailure()
-    {
-        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-json-");
-        try
-        {
-            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
-            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
-            await File.WriteAllTextAsync(jsonPath, """
-                {
-                  "7FE00010": { "vr": "OB", "BulkDataURI": "https://example.invalid/pixel-data" }
-                }
-                """, TestContext.Current.CancellationToken);
-
-            var result = await RunCliAsync("write", jsonPath, dicomPath);
-
-            Assert.Equal(1, result.ExitCode);
-            Assert.Contains("unsupported BulkDataURI", result.StandardError);
-            Assert.False(File.Exists(dicomPath));
-        }
-        finally
-        {
-            workDirectory.Delete(recursive: true);
-        }
-    }
-
-    [Fact]
-    public async Task Write_WithOddLengthOtherWordInlineBinary_ReturnsFailure()
-    {
-        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-json-");
-        try
-        {
-            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
-            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
-            await File.WriteAllTextAsync(jsonPath, """
-                {
-                  "7FE00010": { "vr": "OW", "InlineBinary": "AA==" }
-                }
-                """, TestContext.Current.CancellationToken);
-
-            var result = await RunCliAsync("write", jsonPath, dicomPath);
-
-            Assert.Equal(1, result.ExitCode);
-            Assert.Contains("multiple of 2 bytes", result.StandardError);
-            Assert.False(File.Exists(dicomPath));
-        }
-        finally
-        {
-            workDirectory.Delete(recursive: true);
-        }
-    }
-
-    [Fact]
-    public async Task Write_WithNonArrayValue_ReturnsFailure()
-    {
-        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-json-");
-        try
-        {
-            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
-            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
-            await File.WriteAllTextAsync(jsonPath, """
-                {
-                  "00100020": { "vr": "LO", "Value": "12345" }
-                }
-                """, TestContext.Current.CancellationToken);
-
-            var result = await RunCliAsync("write", jsonPath, dicomPath);
-
-            Assert.Equal(1, result.ExitCode);
-            Assert.Contains("must be an array", result.StandardError);
-            Assert.False(File.Exists(dicomPath));
-        }
-        finally
-        {
-            workDirectory.Delete(recursive: true);
-        }
-    }
-
-    [Fact]
-    public async Task Write_WithObjectValueForNonPersonName_ReturnsFailure()
-    {
-        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-json-");
-        try
-        {
-            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
-            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
-            await File.WriteAllTextAsync(jsonPath, """
-                {
-                  "00100020": { "vr": "LO", "Value": [{ "Alphabetic": "12345" }] }
-                }
-                """, TestContext.Current.CancellationToken);
-
-            var result = await RunCliAsync("write", jsonPath, dicomPath);
-
-            Assert.Equal(1, result.ExitCode);
-            Assert.Contains("only supported for PN VR", result.StandardError);
-            Assert.False(File.Exists(dicomPath));
         }
         finally
         {
@@ -316,7 +51,8 @@ public sealed class CliIntegrationTests
     private static async Task<CliResult> RunCliAsync(params string[] arguments)
     {
         var repoRoot = GetRepoRoot();
-        var projectPath = Path.Combine(repoRoot, "src", "cli", "cli.csproj");
+        var configuration = GetBuildConfiguration();
+        var cliAssemblyPath = Path.Combine(repoRoot, "src", "cli", "bin", configuration, "net10.0", "cli.dll");
 
         using var process = new Process();
         process.StartInfo = new ProcessStartInfo
@@ -327,10 +63,7 @@ public sealed class CliIntegrationTests
             RedirectStandardError = true,
             UseShellExecute = false
         };
-        process.StartInfo.ArgumentList.Add("run");
-        process.StartInfo.ArgumentList.Add("--project");
-        process.StartInfo.ArgumentList.Add(projectPath);
-        process.StartInfo.ArgumentList.Add("--");
+        process.StartInfo.ArgumentList.Add(cliAssemblyPath);
 
         foreach (var argument in arguments)
         {
@@ -356,20 +89,10 @@ public sealed class CliIntegrationTests
             await standardErrorTask);
     }
 
-    private static Task WriteSampleDicomAsync(string sampleFile)
+    private static string GetBuildConfiguration()
     {
-        var dataset = new DicomDataset
-        {
-            { DicomTag.SOPClassUID, DicomUID.CTImageStorage },
-            { DicomTag.SOPInstanceUID, DicomUID.Generate() },
-            { DicomTag.Modality, "CT" },
-            { DicomTag.PatientName, "Doe^Jane" },
-            { DicomTag.PatientID, "12345" },
-            { DicomTag.StudyInstanceUID, DicomUID.Generate() },
-            { DicomTag.SeriesInstanceUID, DicomUID.Generate() }
-        };
-
-        return new DicomFile(dataset).SaveAsync(sampleFile);
+        var pathParts = AppContext.BaseDirectory.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return pathParts.Contains("Release") ? "Release" : "Debug";
     }
 
     private static string GetRepoRoot()
