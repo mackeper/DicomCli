@@ -8,26 +8,44 @@ internal static class DicomwebJsonReader
     public static DicomDataset Read(JsonElement datasetElement)
     {
         var dataset = new DicomDataset();
+        var tagProperties = datasetElement.EnumerateObject().ToArray();
 
-        foreach (var tagProperty in datasetElement.EnumerateObject())
+        foreach (var tagProperty in tagProperties.Where(IsPrivateCreatorAttribute))
         {
-            var tag = ParseTag(tagProperty.Name);
-            var attribute = tagProperty.Value;
-            if (attribute.ValueKind != JsonValueKind.Object)
-            {
-                throw new FormatException($"Attribute {tagProperty.Name} must be an object.");
-            }
+            AddJsonAttribute(dataset, tagProperty);
+        }
 
-            if (!attribute.TryGetProperty("vr", out var vrElement) || vrElement.ValueKind != JsonValueKind.String)
-            {
-                throw new FormatException($"Attribute {tagProperty.Name} must contain string property 'vr'.");
-            }
-
-            var vr = DicomVR.Parse(vrElement.GetString() ?? string.Empty);
-            AddAttribute(dataset, tag, vr, attribute);
+        foreach (var tagProperty in tagProperties.Where(tagProperty => !IsPrivateCreatorAttribute(tagProperty)))
+        {
+            AddJsonAttribute(dataset, tagProperty);
         }
 
         return dataset;
+    }
+
+    private static void AddJsonAttribute(DicomDataset dataset, JsonProperty tagProperty)
+    {
+        var tag = ParseTag(tagProperty.Name);
+        var attribute = tagProperty.Value;
+        if (attribute.ValueKind != JsonValueKind.Object)
+        {
+            throw new FormatException($"Attribute {tagProperty.Name} must be an object.");
+        }
+
+        if (!attribute.TryGetProperty("vr", out var vrElement) || vrElement.ValueKind != JsonValueKind.String)
+        {
+            throw new FormatException($"Attribute {tagProperty.Name} must contain string property 'vr'.");
+        }
+
+        var vr = DicomVR.Parse(vrElement.GetString() ?? string.Empty);
+        tag = ResolvePrivateTag(dataset, tag);
+        AddAttribute(dataset, tag, vr, attribute);
+    }
+
+    private static bool IsPrivateCreatorAttribute(JsonProperty tagProperty)
+    {
+        var tag = ParseTag(tagProperty.Name);
+        return tag.Group % 2 != 0 && tag.Element is >= 0x0010 and <= 0x00ff;
     }
 
     private static DicomTag ParseTag(string value)
@@ -40,6 +58,25 @@ internal static class DicomwebJsonReader
         }
 
         return new DicomTag(group, element);
+    }
+
+    private static DicomTag ResolvePrivateTag(DicomDataset dataset, DicomTag tag)
+    {
+        if (tag.Group % 2 == 0 || tag.Element < 0x1000)
+        {
+            return tag;
+        }
+
+        var creatorElement = (ushort)(tag.Element >> 8);
+        if (creatorElement < 0x10 || creatorElement > 0xff)
+        {
+            return tag;
+        }
+
+        var creatorTag = new DicomTag(tag.Group, creatorElement);
+        return dataset.TryGetSingleValue<string>(creatorTag, out var creator) && !string.IsNullOrWhiteSpace(creator)
+            ? new DicomTag(tag.Group, tag.Element, new DicomPrivateCreator(creator))
+            : tag;
     }
 
     private static void AddAttribute(DicomDataset dataset, DicomTag tag, DicomVR vr, JsonElement attribute)
@@ -228,43 +265,43 @@ internal static class DicomwebJsonReader
     {
         if (vr == DicomVR.US)
         {
-            dataset.AddOrUpdate(tag, values.EnumerateArray().Select(v => GetUInt16Value(tag, v)).ToArray());
+            dataset.AddOrUpdate(vr, tag, values.EnumerateArray().Select(v => GetUInt16Value(tag, v)).ToArray());
             return;
         }
 
         if (vr == DicomVR.SS)
         {
-            dataset.AddOrUpdate(tag, values.EnumerateArray().Select(v => GetInt16Value(tag, v)).ToArray());
+            dataset.AddOrUpdate(vr, tag, values.EnumerateArray().Select(v => GetInt16Value(tag, v)).ToArray());
             return;
         }
 
         if (vr == DicomVR.UL)
         {
-            dataset.AddOrUpdate(tag, values.EnumerateArray().Select(v => v.GetUInt32()).ToArray());
+            dataset.AddOrUpdate(vr, tag, values.EnumerateArray().Select(v => v.GetUInt32()).ToArray());
             return;
         }
 
         if (vr == DicomVR.SL)
         {
-            dataset.AddOrUpdate(tag, values.EnumerateArray().Select(v => v.GetInt32()).ToArray());
+            dataset.AddOrUpdate(vr, tag, values.EnumerateArray().Select(v => v.GetInt32()).ToArray());
             return;
         }
 
         if (vr == DicomVR.FL)
         {
-            dataset.AddOrUpdate(tag, values.EnumerateArray().Select(v => v.GetSingle()).ToArray());
+            dataset.AddOrUpdate(vr, tag, values.EnumerateArray().Select(v => v.GetSingle()).ToArray());
             return;
         }
 
         if (vr == DicomVR.FD)
         {
-            dataset.AddOrUpdate(tag, values.EnumerateArray().Select(v => v.GetDouble()).ToArray());
+            dataset.AddOrUpdate(vr, tag, values.EnumerateArray().Select(v => v.GetDouble()).ToArray());
             return;
         }
 
         if (vr == DicomVR.AT)
         {
-            dataset.AddOrUpdate(tag, values.EnumerateArray().Select(value => ParseTag(GetStringValue(tag, vr, value))).ToArray());
+            dataset.AddOrUpdate(vr, tag, values.EnumerateArray().Select(value => ParseTag(GetStringValue(tag, vr, value))).ToArray());
             return;
         }
 
