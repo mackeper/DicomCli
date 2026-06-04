@@ -1,0 +1,168 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Check
+        if: runner.os != 'Windows'
+        run: make check
+
+      - name: Restore
+        if: runner.os == 'Windows'
+        run: dotnet restore DicomCli.slnx
+
+      - name: Format
+        if: runner.os == 'Windows'
+        run: dotnet format DicomCli.slnx --verify-no-changes --no-restore
+
+      - name: Build
+        if: runner.os == 'Windows'
+        run: dotnet build DicomCli.slnx --configuration Release --no-restore
+
+      - name: Test
+        if: runner.os == 'Windows'
+        run: dotnet test --solution DicomCli.slnx --configuration Release --no-build
+
+  publish:
+    name: Publish (${{ matrix.runtime }})
+    runs-on: ${{ matrix.os }}
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runtime: linux-x64
+            os: ubuntu-latest
+            artifact: dicomcli-linux-x64
+            package: dicomcli-linux-x64.tar.gz
+            executable: dicomcli
+            smoke: true
+          - runtime: linux-arm64
+            os: ubuntu-latest
+            artifact: dicomcli-linux-arm64
+            package: dicomcli-linux-arm64.tar.gz
+            executable: dicomcli
+            smoke: false
+          - runtime: win-x64
+            os: windows-latest
+            artifact: dicomcli-win-x64
+            package: dicomcli-win-x64.zip
+            executable: dicomcli.exe
+            smoke: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Set release version
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $version = $env:RELEASE_TAG -replace '^v', ''
+          $semverPattern = '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$'
+          if ($version -notmatch $semverPattern) {
+            throw "Release tag '$env:RELEASE_TAG' must use SemVer format, such as v1.2.3."
+          }
+          "RELEASE_VERSION=$version" >> $env:GITHUB_ENV
+
+      - name: Publish
+        shell: pwsh
+        run: >-
+          dotnet publish src/cli/cli.csproj
+          --configuration Release
+          --runtime ${{ matrix.runtime }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:Version=$env:RELEASE_VERSION
+          -p:InformationalVersion=$env:RELEASE_VERSION
+          -p:StripSymbols=true
+          -p:InvariantGlobalization=true
+          -p:DebugType=None
+          -p:DebugSymbols=false
+          --output artifacts/${{ matrix.artifact }}
+
+      - name: Set Unix executable bit
+        if: runner.os == 'Linux'
+        run: chmod +x artifacts/${{ matrix.artifact }}/${{ matrix.executable }}
+
+      - name: Smoke test Linux binary
+        if: matrix.smoke && runner.os == 'Linux'
+        run: |
+          ./artifacts/${{ matrix.artifact }}/${{ matrix.executable }} --version
+          ./artifacts/${{ matrix.artifact }}/${{ matrix.executable }} 0002.DCM --format text
+
+      - name: Smoke test Windows binary
+        if: matrix.smoke && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & "artifacts/${{ matrix.artifact }}/${{ matrix.executable }}" --version
+          & "artifacts/${{ matrix.artifact }}/${{ matrix.executable }}" 0002.DCM --format text
+
+      - name: Package Unix artifact
+        if: runner.os == 'Linux'
+        run: tar -czf artifacts/${{ matrix.package }} -C artifacts/${{ matrix.artifact }} .
+
+      - name: Package Windows artifact
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path artifacts/${{ matrix.artifact }}/* -DestinationPath artifacts/${{ matrix.package }}
+
+      - name: Upload release package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.package }}
+          path: artifacts/${{ matrix.package }}
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: publish
+    permissions:
+      contents: write
+    steps:
+      - name: Download release packages
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum dicomcli-*.tar.gz dicomcli-*.zip > SHA256SUMS
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: >-
+          gh release create "$RELEASE_TAG" dist/*
+          --title "$RELEASE_TAG"
+          --notes "Release $RELEASE_TAG. See SHA256SUMS for artifact checksums."

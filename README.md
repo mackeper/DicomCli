@@ -29,7 +29,7 @@ Package and build metadata declare `MIT` with `PackageLicenseExpression`. This s
 - `make run` runs the CLI with a 2 GB heap cap.
 - `make build` builds the solution.
 - `make format` formats the solution.
-- `make publish` publishes a linux-arm64 single-file binary to `bin/cli`.
+- `make publish` publishes a linux-arm64 single-file binary to `bin/dicomcli`.
 - `dotnet test` runs the test project.
 
 ## Tests

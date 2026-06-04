@@ -19,6 +19,7 @@ check:
 	DOTNET_GCHeapHardLimit=7C0000000 dotnet test --solution DicomCli.slnx --configuration Release --no-build
 
 publish:
+	rm -f ./bin/cli ./bin/cli.exe
 	DOTNET_GCHeapHardLimit=7C0000000 dotnet publish \
 	  -c Release \
 	  -r linux-arm64 \
@@ -32,4 +33,4 @@ publish:
 	  -p:DebugSymbols=false \
 	  -o ./bin \
 	  src/cli
-	@echo "Run with: ./bin/cli"
+	@echo "Run with: ./bin/dicomcli"

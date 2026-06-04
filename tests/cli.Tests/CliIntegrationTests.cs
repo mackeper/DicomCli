@@ -5,6 +5,17 @@ namespace cli.Tests;
 public sealed class CliIntegrationTests
 {
     [Fact]
+    public void BuiltExecutableUsesDicomcliName()
+    {
+        var repoRoot = GetRepoRoot();
+        var configuration = GetBuildConfiguration();
+        var executableName = OperatingSystem.IsWindows() ? "dicomcli.exe" : "dicomcli";
+        var executablePath = Path.Combine(repoRoot, "src", "cli", "bin", configuration, "net10.0", executableName);
+
+        Assert.True(File.Exists(executablePath), $"Expected built executable at '{executablePath}'.");
+    }
+
+    [Fact]
     public async Task ExecutableReadWithSampleDicomWritesJsonOutput()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-read-smoke-");
@@ -52,7 +63,7 @@ public sealed class CliIntegrationTests
     {
         var repoRoot = GetRepoRoot();
         var configuration = GetBuildConfiguration();
-        var cliAssemblyPath = Path.Combine(repoRoot, "src", "cli", "bin", configuration, "net10.0", "cli.dll");
+        var cliAssemblyPath = Path.Combine(repoRoot, "src", "cli", "bin", configuration, "net10.0", "dicomcli.dll");
 
         using var process = new Process();
         process.StartInfo = new ProcessStartInfo

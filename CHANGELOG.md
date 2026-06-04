@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- No unreleased changes yet.
+- Added a tagged GitHub release workflow with archived runtime artifacts and SHA-256 checksums.
+- Renamed the published binary from `cli` to `dicomcli`.
 
 ## 0.1.0 - 2026-06-04
 

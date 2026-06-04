@@ -7,7 +7,7 @@
 - `make run` - run CLI with 2 GB heap cap
 - `make build` - build solution with 2 GB heap cap
 - `make format` - format solution with 2 GB heap cap
-- `make publish` - publish linux-arm64 single binary to `bin/cli`
+- `make publish` - publish linux-arm64 single binary to `bin/dicomcli`
 - `dotnet test` - run xUnit v3 tests via MTP
 
 ## CLI
