@@ -58,10 +58,13 @@ jobs:
         include:
           - runtime: linux-x64
             artifact: dicomcli-linux-x64
+            package: dicomcli-linux-x64.tar.gz
           - runtime: linux-arm64
             artifact: dicomcli-linux-arm64
+            package: dicomcli-linux-arm64.tar.gz
           - runtime: win-x64
             artifact: dicomcli-win-x64
+            package: dicomcli-win-x64.zip
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -89,20 +92,23 @@ jobs:
 
       - name: Package Linux artifact
         if: startsWith(matrix.runtime, 'linux-')
-        run: tar -czf artifacts/${{ matrix.artifact }}.tar.gz -C artifacts/${{ matrix.artifact }} .
+        run: tar -czf artifacts/${{ matrix.package }} -C artifacts/${{ matrix.artifact }} .
 
-      - name: Upload Linux artifact
-        if: startsWith(matrix.runtime, 'linux-')
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact }}
-          path: artifacts/${{ matrix.artifact }}.tar.gz
-          if-no-files-found: error
-
-      - name: Upload Windows artifact
+      - name: Package Windows artifact
         if: startsWith(matrix.runtime, 'win-')
+        shell: pwsh
+        run: Compress-Archive -Path artifacts/${{ matrix.artifact }}/* -DestinationPath artifacts/${{ matrix.package }}
+
+      - name: Generate checksum
+        run: |
+          cd artifacts
+          sha256sum ${{ matrix.package }} > ${{ matrix.package }}.sha256
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: artifacts/${{ matrix.artifact }}
+          path: |
+            artifacts/${{ matrix.package }}
+            artifacts/${{ matrix.package }}.sha256
           if-no-files-found: error
