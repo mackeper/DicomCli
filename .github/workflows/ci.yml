@@ -59,12 +59,15 @@ jobs:
           - runtime: linux-x64
             artifact: dicomcli-linux-x64
             package: dicomcli-linux-x64.tar.gz
+            smoke: true
           - runtime: linux-arm64
             artifact: dicomcli-linux-arm64
             package: dicomcli-linux-arm64.tar.gz
+            smoke: false
           - runtime: win-x64
             artifact: dicomcli-win-x64
             package: dicomcli-win-x64.zip
+            smoke: false
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -89,6 +92,12 @@ jobs:
 
       - name: Include release docs
         run: cp LICENSE README.md artifacts/${{ matrix.artifact }}/
+
+      - name: Smoke test Linux binary
+        if: matrix.smoke
+        run: |
+          ./artifacts/${{ matrix.artifact }}/dicomcli --version
+          ./artifacts/${{ matrix.artifact }}/dicomcli tests/fixtures/sample.dcm --format text
 
       - name: Package Linux artifact
         if: startsWith(matrix.runtime, 'linux-')

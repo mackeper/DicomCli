@@ -484,3 +484,4 @@ $RECYCLE.BIN/
 # DICOM files
 *.dcm
 *.DCM
+!tests/fixtures/sample.dcm

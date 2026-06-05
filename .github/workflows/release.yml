@@ -119,14 +119,14 @@ jobs:
         if: matrix.smoke && runner.os == 'Linux'
         run: |
           ./artifacts/${{ matrix.artifact }}/${{ matrix.executable }} --version
-          ./artifacts/${{ matrix.artifact }}/${{ matrix.executable }} 0002.DCM --format text
+          ./artifacts/${{ matrix.artifact }}/${{ matrix.executable }} tests/fixtures/sample.dcm --format text
 
       - name: Smoke test Windows binary
         if: matrix.smoke && runner.os == 'Windows'
         shell: pwsh
         run: |
           & "artifacts/${{ matrix.artifact }}/${{ matrix.executable }}" --version
-          & "artifacts/${{ matrix.artifact }}/${{ matrix.executable }}" 0002.DCM --format text
+          & "artifacts/${{ matrix.artifact }}/${{ matrix.executable }}" tests/fixtures/sample.dcm --format text
 
       - name: Package Unix artifact
         if: runner.os == 'Linux'
