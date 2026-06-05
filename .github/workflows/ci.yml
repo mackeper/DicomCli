@@ -84,6 +84,9 @@ jobs:
           -p:DebugSymbols=false
           --output artifacts/${{ matrix.artifact }}
 
+      - name: Include release docs
+        run: cp LICENSE README.md artifacts/${{ matrix.artifact }}/
+
       - name: Package Linux artifact
         if: startsWith(matrix.runtime, 'linux-')
         run: tar -czf artifacts/${{ matrix.artifact }}.tar.gz -C artifacts/${{ matrix.artifact }} .
