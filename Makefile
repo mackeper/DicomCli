@@ -1,5 +1,8 @@
 VERSION ?= 0.1.0
 
+# Maintainer helper targets for constrained environments such as Termux.
+# User-facing build instructions should prefer raw dotnet commands.
+
 run:
 	DOTNET_GCHeapHardLimit=7C0000000 dotnet run --project src/cli
 
