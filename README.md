@@ -37,14 +37,14 @@ Extract `dicomcli-win-x64.zip`, then run:
 
 ## Verify Checksums
 
-Every release archive has a sidecar `.sha256` file named after the archive, for example `dicomcli-linux-x64.tar.gz.sha256`.
+Every release includes a `SHA256SUMS` file with checksums for all release archives.
 
 ### Linux
 
-Download the archive and its sidecar checksum file into the same directory, then run:
+Download the archive and `SHA256SUMS` into the same directory, then run:
 
 ```bash
-sha256sum -c dicomcli-linux-x64.tar.gz.sha256
+sha256sum -c SHA256SUMS
 ```
 
 Expected output ends with:
@@ -55,10 +55,10 @@ dicomcli-linux-x64.tar.gz: OK
 
 ### Windows
 
-Download `dicomcli-win-x64.zip` and `dicomcli-win-x64.zip.sha256`, then compare the expected hash in the sidecar file with PowerShell output:
+Download `dicomcli-win-x64.zip` and `SHA256SUMS`, then compare the expected hash in `SHA256SUMS` with PowerShell output:
 
 ```powershell
-Get-Content .\dicomcli-win-x64.zip.sha256
+Get-Content .\SHA256SUMS
 Get-FileHash .\dicomcli-win-x64.zip -Algorithm SHA256
 ```
 
