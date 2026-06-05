@@ -41,6 +41,24 @@ internal static class TestDicomFiles
         return new DicomFile(dataset).SaveAsync(sampleFile);
     }
 
+    public static Task WriteGoldenJsonSampleDicomAsync(string sampleFile)
+    {
+        EnsureDicomSetup();
+
+        var dataset = new DicomDataset
+        {
+            { DicomTag.SOPClassUID, DicomUID.CTImageStorage },
+            { DicomTag.SOPInstanceUID, "1.2.826.0.1.3680043.10.999.1" },
+            { DicomTag.Modality, "CT" },
+            { DicomTag.PatientName, "Doe^Jane" },
+            { DicomTag.PatientID, "12345" },
+            { DicomTag.StudyInstanceUID, "1.2.826.0.1.3680043.10.999.2" },
+            { DicomTag.SeriesInstanceUID, "1.2.826.0.1.3680043.10.999.3" }
+        };
+
+        return new DicomFile(dataset).SaveAsync(sampleFile);
+    }
+
     public static string MinimalCtJson => """
         {
           "00080016": { "vr": "UI", "Value": ["1.2.840.10008.5.1.4.1.1.2"] },
