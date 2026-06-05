@@ -166,7 +166,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: >-
-          gh release create "$RELEASE_TAG" dist/*
-          --title "$RELEASE_TAG"
-          --notes "Release $RELEASE_TAG. See SHA256SUMS for artifact checksums."
+        run: |
+          release_flags=()
+          if [[ "$RELEASE_TAG" == *-rc.* ]]; then
+            release_flags+=(--prerelease)
+          fi
+
+          gh release create "$RELEASE_TAG" dist/* "${release_flags[@]}" \
+            --title "$RELEASE_TAG" \
+            --notes "Release $RELEASE_TAG. See SHA256SUMS for artifact checksums."
