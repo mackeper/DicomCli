@@ -41,12 +41,17 @@ internal static class DicomCliCommands
             aliases: ["-o", "--output"],
             description: "Path to output DICOM file. When present, input file must be DICOMweb JSON.");
 
+        var forceOption = new Option<bool>(
+            aliases: ["--force"],
+            description: "Overwrite the output DICOM file when writing.");
+
         var rootCommand = new RootCommand("Reads DICOM files and writes DICOM files from DICOMweb JSON")
         {
             fileArgument,
             formatOption,
             binaryFormatOption,
-            outputOption
+            outputOption,
+            forceOption
         };
         rootCommand.Name = GetProductName();
 
@@ -62,7 +67,14 @@ internal static class DicomCliCommands
                     return;
                 }
 
-                context.ExitCode = ExecuteWriteFromContext(context, fileArgument, formatOption, binaryFormatOption, outputPath, error);
+                context.ExitCode = ExecuteWriteFromContext(context, fileArgument, formatOption, binaryFormatOption, forceOption, outputPath, error);
+                return;
+            }
+
+            if (context.ParseResult.GetValueForOption(forceOption))
+            {
+                error.WriteLine("--force can only be used when writing with -o/--output.");
+                context.ExitCode = 1;
                 return;
             }
 
@@ -77,6 +89,7 @@ internal static class DicomCliCommands
         Argument<string> fileArg,
         Option<string> formatOpt,
         Option<string> binaryOpt,
+        Option<bool> forceOpt,
         string outputPath,
         TextWriter error)
     {
@@ -93,7 +106,7 @@ internal static class DicomCliCommands
         }
 
         var inputPath = context.ParseResult.GetValueForArgument(fileArg);
-        return DicomCliApp.ExecuteWrite(inputPath, outputPath, error);
+        return DicomCliApp.ExecuteWrite(inputPath, outputPath, context.ParseResult.GetValueForOption(forceOpt), error);
     }
 
     private static int ExecuteReadFromContext(

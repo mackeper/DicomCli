@@ -191,7 +191,7 @@ public sealed class ReadFlowTests
         TestDicomFiles.EnsureDicomSetup();
         using var error = new StringWriter();
 
-        var exitCode = DicomCliApp.ExecuteWrite(inputPath, outputPath, error);
+        var exitCode = DicomCliApp.ExecuteWrite(inputPath, outputPath, force: false, error);
 
         return new FlowResult(exitCode, string.Empty, error.ToString());
     }

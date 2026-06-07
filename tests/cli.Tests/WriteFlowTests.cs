@@ -119,6 +119,56 @@ public sealed class WriteFlowTests
         }
     }
 
+    [Fact]
+    public async Task WriteDicomwebJsonWithoutForceDoesNotOverwriteExistingOutputFile()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-write-flow-");
+        try
+        {
+            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
+            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
+            const string originalOutput = "existing output";
+            await File.WriteAllTextAsync(jsonPath, TestDicomFiles.MinimalCtJson, TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(dicomPath, originalOutput, TestContext.Current.CancellationToken);
+
+            var result = ExecuteWrite(jsonPath, dicomPath);
+
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains("Use --force to overwrite", result.Error);
+            Assert.Equal(originalOutput, await File.ReadAllTextAsync(dicomPath, TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task WriteDicomwebJsonWithForceOverwritesExistingOutputFile()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-write-flow-");
+        try
+        {
+            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
+            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
+            await File.WriteAllTextAsync(jsonPath, TestDicomFiles.MinimalCtJson, TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(dicomPath, "existing output", TestContext.Current.CancellationToken);
+
+            var writeResult = ExecuteWrite(jsonPath, dicomPath, force: true);
+            var readResult = ExecuteRead(dicomPath, "json", "base64");
+
+            Assert.Equal(0, writeResult.ExitCode);
+            Assert.Empty(writeResult.Error);
+            Assert.Equal(0, readResult.ExitCode);
+            Assert.Empty(readResult.Error);
+            Assert.Contains("\"00100020\":{\"vr\":\"LO\",\"name\":", readResult.Output);
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
     private static FlowResult ExecuteRead(string filePath, string format, string binaryFormat)
     {
         TestDicomFiles.EnsureDicomSetup();
@@ -130,12 +180,12 @@ public sealed class WriteFlowTests
         return new FlowResult(exitCode, output.ToString(), error.ToString());
     }
 
-    private static FlowResult ExecuteWrite(string inputPath, string outputPath)
+    private static FlowResult ExecuteWrite(string inputPath, string outputPath, bool force = false)
     {
         TestDicomFiles.EnsureDicomSetup();
         using var error = new StringWriter();
 
-        var exitCode = DicomCliApp.ExecuteWrite(inputPath, outputPath, error);
+        var exitCode = DicomCliApp.ExecuteWrite(inputPath, outputPath, force, error);
 
         return new FlowResult(exitCode, string.Empty, error.ToString());
     }

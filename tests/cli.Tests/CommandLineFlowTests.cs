@@ -144,6 +144,39 @@ public sealed class CommandLineFlowTests
         }
     }
 
+    [Fact]
+    public async Task OutputOptionWithForceOverwritesExistingOutputFile()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
+        try
+        {
+            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
+            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
+            await File.WriteAllTextAsync(jsonPath, TestDicomFiles.MinimalCtJson, TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(dicomPath, "existing output", TestContext.Current.CancellationToken);
+
+            var result = await ExecuteCommandAsync(jsonPath, "-o", dicomPath, "--force");
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Empty(result.Error);
+            Assert.True(new FileInfo(dicomPath).Length > "existing output".Length);
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ForceWithoutOutputOptionReturnsFailure()
+    {
+        var result = await ExecuteCommandAsync("input.dcm", "--force");
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("--force can only be used when writing", result.Error);
+        Assert.DoesNotContain("File not found", result.Error);
+    }
+
     [Theory]
     [InlineData("--format", "xml")]
     [InlineData("--binary-format", "raw")]

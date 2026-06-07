@@ -3,7 +3,7 @@ using FellowOakDicom;
 
 internal static class DicomCliApp
 {
-    public static int ExecuteWrite(string inputPath, string outputPath, TextWriter error)
+    public static int ExecuteWrite(string inputPath, string outputPath, bool force, TextWriter error)
     {
         if (!HasExtension(inputPath, ".json"))
         {
@@ -65,11 +65,18 @@ internal static class DicomCliApp
         try
         {
             var file = new DicomFile(dataset);
-            file.Save(outputPath);
+            using var stream = new FileStream(outputPath, force ? FileMode.Create : FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            file.Save(stream);
             return 0;
         }
         catch (IOException ex)
         {
+            if (!force && File.Exists(outputPath))
+            {
+                error.WriteLine($"Output file already exists: {outputPath}. Use --force to overwrite.");
+                return 1;
+            }
+
             error.WriteLine($"Failed to write DICOM file: {ex.Message}");
             return 1;
         }

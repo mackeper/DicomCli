@@ -14,5 +14,4 @@
 ## Features
 
 - Add best-effort de-identification flag for common patient-identifying tags after `v0.1.0`.
-- Add safe overwrite behavior with `--force` after `v0.1.0`.
 - Add richer CLI exit codes after `v0.1.0`.
