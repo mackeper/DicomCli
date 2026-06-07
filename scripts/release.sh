@@ -6,10 +6,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/release-common.sh"
 
 main() {
-  [[ $# -eq 1 ]] || die "Usage: scripts/release.sh <version>, for example scripts/release.sh 0.1.0"
+  [[ $# -eq 0 ]] || die "Usage: scripts/release.sh"
 
-  local version="$1"
-  [[ "$version" =~ ^(0|[1-9][0-9]*)\.([0-9]|[1-9][0-9]*)\.([0-9]|[1-9][0-9]*)$ ]] || die "Release version must use X.Y.Z format."
+  local version
+  version="$(read_release_version)"
 
   local tag="v$version"
 

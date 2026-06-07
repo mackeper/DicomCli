@@ -22,9 +22,62 @@ read_property() {
   local name="$1"
   local value
 
-  value="$(grep -E "^[[:space:]]*<$name>[^<]+</$name>[[:space:]]*$" "$PROPS_FILE" | sed -E "s|^[[:space:]]*<$name>([^<]+)</$name>[[:space:]]*$|\1|" | head -n 1)"
+  value="$(grep -E "^[[:space:]]*<$name>[^<]+</$name>[[:space:]]*$" "$PROPS_FILE" | sed -E "s|^[[:space:]]*<$name>([^<]+)</$name>[[:space:]]*$|\1|" | head -n 1 || true)"
   [[ -n "$value" ]] || die "Missing <$name> in $PROPS_FILE."
   printf '%s\n' "$value"
+}
+
+read_release_version() {
+  local version
+
+  version="$(read_property Version)"
+  [[ "$version" =~ ^(0|[1-9][0-9]*)\.([0-9]|[1-9][0-9]*)\.([0-9]|[1-9][0-9]*)$ ]] || die "Directory.Build.props <Version> must use X.Y.Z format."
+  printf '%s\n' "$version"
+}
+
+next_rc_version() {
+  local base_version="$1"
+  local version_pattern="^v${base_version//./\\.}-rc\.([1-9][0-9]*)$"
+  local max_rc=0
+  local rc
+  local remote_refs
+  local remote_status
+  local ref
+  local tag
+
+  while IFS= read -r tag; do
+    [[ -n "$tag" ]] || continue
+    if [[ "$tag" =~ $version_pattern ]]; then
+      rc="${BASH_REMATCH[1]}"
+      if ((rc > max_rc)); then
+        max_rc="$rc"
+      fi
+    fi
+  done < <(git -C "$REPO_ROOT" tag --list "v$base_version-rc.*")
+
+  set +e
+  remote_refs="$(git -C "$REPO_ROOT" ls-remote --tags origin "refs/tags/v$base_version-rc.*" 2>/dev/null)"
+  remote_status=$?
+  set -e
+
+  [[ $remote_status -eq 0 ]] || die "Unable to read remote RC tags from origin."
+
+  while IFS=$'\t' read -r _ ref; do
+    [[ -n "${ref:-}" ]] || continue
+    if [[ "$ref" == *"^{}" ]]; then
+      ref="${ref:0:${#ref}-3}"
+    fi
+
+    tag="${ref#refs/tags/}"
+    if [[ "$tag" =~ $version_pattern ]]; then
+      rc="${BASH_REMATCH[1]}"
+      if ((rc > max_rc)); then
+        max_rc="$rc"
+      fi
+    fi
+  done <<<"$remote_refs"
+
+  printf '%s-rc.%d\n' "$base_version" "$((max_rc + 1))"
 }
 
 require_metadata_version() {
