@@ -51,6 +51,7 @@ main() {
 
   printf 'Release %s.\n\n' "$release_tag"
   printf '%s\n' "$changelog_text"
+  printf '\nSee the [changelog](https://github.com/OWNER/REPO/blob/TAG/CHANGELOG.md) for full details.\n'
 }
 
 main "$@"
