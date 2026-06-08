@@ -2,11 +2,9 @@
 
 CLI tools for reading and writing DICOM files.
 
-[Usage](#usage) - [Install](#install) - [Build](#build-from-source) - [Privacy](#privacy) - [License](#license) - [ROADMAP.md](ROADMAP.md)
+[Usage](#usage) · [Install](#install) · [Build](#build-from-source) · [Privacy](#privacy) · [License](#license)
 
 ## Usage
-
-Captured from `dotnet run --project src/cli -- --help`:
 
 ```text
 Description:
@@ -26,84 +24,48 @@ Options:
   -?, -h, --help                        Show help and usage information
 ```
 
-### Exit Codes
-
-- `0` means the command completed successfully.
-- `1` means the command failed because input, options, file extension, DICOM parsing, or DICOMweb JSON conversion was invalid.
+Exit codes: `0` success, `1` invalid input.
 
 ## Install
 
-Download the archive for your platform from GitHub Releases:
+Download from [GitHub Releases](https://github.com/anomalyco/DicomCli/releases):
 
-- `dicomcli-linux-x64.tar.gz`
-- `dicomcli-linux-arm64.tar.gz`
-- `dicomcli-win-x64.zip`
+| Platform | Archive |
+|----------|---------|
+| Linux x64 | `dicomcli-linux-x64.tar.gz` |
+| Linux ARM64 | `dicomcli-linux-arm64.tar.gz` |
+| Windows x64 | `dicomcli-win-x64.zip` |
 
-Each release archive includes the `dicomcli` executable, `LICENSE`, and `README.md` at the archive root. Windows archives include `dicomcli.exe`.
-
-### Linux
+Each archive contains the `dicomcli` binary, `LICENSE`, and `README.md`.
 
 ```bash
+# Linux
 tar -xzf dicomcli-linux-x64.tar.gz
 ./dicomcli --version
+
+# Windows (PowerShell)
+# Expand-Archive dicomcli-win-x64.zip
+# .\dicomcli.exe --version
 ```
 
-For ARM64 Linux, use `dicomcli-linux-arm64.tar.gz` instead.
+Verify checksums with `sha256sum -c SHA256SUMS` (Linux) or compare the expected hash from `SHA256SUMS` with `Get-FileHash` (Windows).
 
-### Windows
+## Build from Source
 
-Extract `dicomcli-win-x64.zip`, then run:
-
-```powershell
-.\dicomcli.exe --version
-```
-
-## Verify Checksums
-
-Every release includes a `SHA256SUMS` file. On Linux, download it with the release archive, then run:
-
-```bash
-sha256sum -c SHA256SUMS
-```
-
-On Windows, compare the expected hash in `SHA256SUMS` with PowerShell output:
-
-```powershell
-Get-Content .\SHA256SUMS
-Get-FileHash .\dicomcli-win-x64.zip -Algorithm SHA256
-```
-
-## Build From Source
-
-Install the .NET 10 SDK, clone the repository, then run:
+Requires .NET 10 SDK.
 
 ```bash
 dotnet restore
 dotnet build
 dotnet test
-dotnet run --project src/cli -- --version
-```
-
-Run from source with:
-
-```bash
 dotnet run --project src/cli -- image.dcm
-```
-
-Publish a Linux ARM64 binary to `bin/dicomcli` with:
-
-```bash
-make publish
+make publish    # publish linux-arm64 binary to bin/dicomcli
 ```
 
 ## Privacy
 
-DICOM files commonly contain protected health information (PHI), patient names, identifiers, birth dates, accession numbers, study details, and institution details.
-
-Treat all DicomCli text output, DICOMweb JSON output, terminal scrollback, redirected output files, logs, screenshots, copied snippets, generated DICOM files, and release-verification sample output as sensitive clinical data unless you have verified the data is de-identified.
-
-DicomCli does not de-identify data. Do not paste command output or generated JSON/DICOM files into tickets, chats, logs, or public issue trackers unless PHI risk has been reviewed.
+DICOM files often contain protected health information (PHI). Treat all DicomCli output—text, JSON, scrollback, files, logs, screenshots—as sensitive clinical data unless verified de-identified. DicomCli does not de-identify data. Do not paste output into tickets, chats, or public trackers without PHI review.
 
 ## License
 
-DicomCli is licensed under the MIT License. See `LICENSE`.
+MIT. See [LICENSE](LICENSE).
