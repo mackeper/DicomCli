@@ -2,7 +2,7 @@
 
 CLI tools for reading and writing DICOM files.
 
-[Usage](#usage) - [Build From Source](#build-from-source) - [Install](#install) - [Privacy](#privacy) - [License](#license) - [ROADMAP.md](ROADMAP.md)
+[Usage](#usage) - [Install](#install) - [Build](#build-from-source) - [Privacy](#privacy) - [License](#license) - [ROADMAP.md](ROADMAP.md)
 
 ## Usage
 
