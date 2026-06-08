@@ -165,6 +165,18 @@ jobs:
           cd dist
           sha256sum dicomcli-*.tar.gz dicomcli-*.zip > SHA256SUMS
 
+      - name: Generate release notes
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          {
+            printf 'Release %s.\n\n' "$RELEASE_TAG"
+            printf 'SHA256 checksums:\n\n'
+            printf '```text\n'
+            cat dist/SHA256SUMS
+            printf '```\n'
+          } > RELEASE_NOTES.md
+
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -177,4 +189,4 @@ jobs:
 
           gh release create "$RELEASE_TAG" dist/* "${release_flags[@]}" \
             --title "$RELEASE_TAG" \
-            --notes "Release $RELEASE_TAG. See SHA256SUMS for artifact checksums."
+            --notes-file RELEASE_NOTES.md
