@@ -169,46 +169,15 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          release_version="${RELEASE_TAG#v}"
-          changelog_section="${release_version%%+*}"
-
-          write_changelog_section() {
-            awk -v section="$1" '
-              /^## / {
-                heading = $0
-                sub(/^##[[:space:]]+/, "", heading)
-                split(heading, parts, /[[:space:]]+-[[:space:]]+/)
-                heading_key = parts[1]
-
-                if (in_section) {
-                  exit
-                }
-
-                if (heading_key == section) {
-                  in_section = 1
-                  next
-                }
-              }
-
-              in_section { print }
-            ' CHANGELOG.md
-          }
-
-          write_changelog_section "$changelog_section" > CHANGELOG_SECTION.md
-          if [[ ! -s CHANGELOG_SECTION.md ]]; then
-            changelog_section="Unreleased"
-            write_changelog_section "$changelog_section" > CHANGELOG_SECTION.md
-          fi
+          scripts/release-notes.sh "$RELEASE_TAG" > RELEASE_NOTES.md
 
           {
-            printf 'Release %s.\n\n' "$RELEASE_TAG"
-            cat CHANGELOG_SECTION.md
             printf '\n'
             printf 'SHA256 checksums:\n\n'
             printf '```text\n'
             cat dist/SHA256SUMS
             printf '```\n'
-          } > RELEASE_NOTES.md
+          } >> RELEASE_NOTES.md
 
       - name: Create release
         env:
