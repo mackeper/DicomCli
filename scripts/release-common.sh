@@ -137,5 +137,6 @@ create_release_tag() {
 
   git -C "$REPO_ROOT" tag -a "$tag" -m "$message"
   log_info "Created tag $tag."
-  log_info "Push with: git push origin $tag"
+  git -C "$REPO_ROOT" push origin "$tag"
+  log_info "Pushed tag $tag."
 }
