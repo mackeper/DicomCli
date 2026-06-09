@@ -33,9 +33,18 @@ Each archive contains the binary, `LICENSE`, and `README.md`. Verify downloads a
 Requires .NET 10 SDK.
 
 ```bash
-dotnet build
-dotnet run --project src/cli -- image.dcm
+# Linux/macOS
+scripts/publish.sh
+./bin/dicomcli image.dcm
 ```
+
+```powershell
+# Windows
+pwsh scripts/publish.ps1
+.\bin\dicomcli.exe image.dcm
+```
+
+The publish script detects the current OS and CPU architecture. Pass a runtime identifier to override it, such as `scripts/publish.sh linux-x64` or `pwsh scripts/publish.ps1 win-x64`.
 
 ## Privacy
 

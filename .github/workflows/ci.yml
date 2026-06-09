@@ -30,23 +30,12 @@ jobs:
 
       - name: Check
         if: runner.os != 'Windows'
-        run: make check
+        run: scripts/check.sh
 
-      - name: Restore
+      - name: Check
         if: runner.os == 'Windows'
-        run: dotnet restore DicomCli.slnx
-
-      - name: Format
-        if: runner.os == 'Windows'
-        run: dotnet format DicomCli.slnx --verify-no-changes --no-restore
-
-      - name: Build
-        if: runner.os == 'Windows'
-        run: dotnet build DicomCli.slnx --configuration Release --no-restore
-
-      - name: Test
-        if: runner.os == 'Windows'
-        run: dotnet test --solution DicomCli.slnx --configuration Release --no-build
+        shell: pwsh
+        run: scripts/check.ps1
 
   publish:
     name: Publish (${{ matrix.runtime }})

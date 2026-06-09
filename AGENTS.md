@@ -4,11 +4,15 @@
 
 ## Commands
 
-- `make run` - run CLI with 2 GB heap cap
-- `make build` - build solution with 2 GB heap cap
-- `make format` - format solution with 2 GB heap cap
-- `make publish` - publish linux-arm64 single binary to `bin/dicomcli`
+- `scripts/run.sh` / `pwsh scripts/run.ps1` - run CLI
+- `scripts/build.sh` / `pwsh scripts/build.ps1` - build solution
+- `scripts/format.sh` / `pwsh scripts/format.ps1` - format solution
+- `scripts/test.sh` / `pwsh scripts/test.ps1` - run tests
+- `scripts/check.sh` / `pwsh scripts/check.ps1` - restore, verify format, build, test
+- `scripts/publish.sh [runtime]` / `pwsh scripts/publish.ps1 [runtime]` - publish single binary to `bin/`
 - `dotnet test` - run xUnit v3 tests via MTP
+
+Bash scripts apply `DOTNET_GCHeapHardLimit=7C0000000` only when running under Termux on Android.
 
 ## CLI
 
@@ -31,7 +35,7 @@
 Every code change, one logical unit:
 
 1. Implement.
-2. Validate: `make build`, then `make format`. Failure -> fix + rerun.
+2. Validate: `scripts/build.sh`, then `scripts/format.sh`. Failure -> fix + rerun.
 3. Review: call `task` with `Reviewer1` or `Reviewer2`.
 4. Act: apply good correctness/style/arch suggestions.
 5. Re-validate after edits.

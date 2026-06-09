@@ -2,6 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=dotnet-env.sh
+source "$SCRIPT_DIR/dotnet-env.sh"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PROPS_FILE="$REPO_ROOT/Directory.Build.props"
 
@@ -125,10 +127,10 @@ require_tag_absent() {
 
 run_release_checks() {
   log_info "Running release checks..."
-  DOTNET_GCHeapHardLimit=7C0000000 dotnet restore "$REPO_ROOT/DicomCli.slnx"
-  DOTNET_GCHeapHardLimit=7C0000000 dotnet format "$REPO_ROOT/DicomCli.slnx" --verify-no-changes --no-restore
-  DOTNET_GCHeapHardLimit=7C0000000 dotnet build "$REPO_ROOT/DicomCli.slnx" --configuration Release --no-restore
-  DOTNET_GCHeapHardLimit=7C0000000 dotnet test --solution "$REPO_ROOT/DicomCli.slnx" --configuration Release --no-build
+  dotnet restore "$REPO_ROOT/DicomCli.slnx"
+  dotnet format "$REPO_ROOT/DicomCli.slnx" --verify-no-changes --no-restore
+  dotnet build "$REPO_ROOT/DicomCli.slnx" --configuration Release --no-restore
+  dotnet test --solution "$REPO_ROOT/DicomCli.slnx" --configuration Release --no-build
 }
 
 create_release_tag() {

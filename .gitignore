@@ -6,6 +6,9 @@
 # dotenv files
 .env
 
+# Local OpenCode settings
+opencode.json
+
 # User-specific files
 *.rsuser
 *.suo
