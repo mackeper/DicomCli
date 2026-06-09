@@ -17,10 +17,10 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
 
@@ -61,10 +61,10 @@ jobs:
             smoke: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
 
@@ -141,7 +141,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download release packages
         uses: actions/download-artifact@v4
