@@ -132,6 +132,7 @@ jobs:
           name: ${{ matrix.package }}
           path: artifacts/${{ matrix.package }}
           if-no-files-found: error
+          retention-days: 3
 
   release:
     name: Create GitHub Release

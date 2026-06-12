@@ -13,5 +13,15 @@
 
 ## Features
 
-- Add best-effort de-identification flag for common patient-identifying tags after `v0.1.0`.
-- Add richer CLI exit codes after `v0.1.0`.
+- Add `--pretty`.
+- Add `--deidentify`.
+- Add de-identification controls: `--remove-private`, `--regenerate-uids`, `--date-shift <days>`, `--keep-pixel-data`.
+- Add tag filtering: `--tag <tag-or-keyword>`, `--exclude <tag-or-keyword>`, `--no-pixel-data`, `--no-private`.
+- Add `--validate`.
+- Add richer CLI exit codes.
+- Add strict DICOMweb JSON mode: `--strict`, `--include-names`. Current JSON includes a non-standard `name` field.
+- Add BulkData support: `--bulk-data-uri`, `--inline-binary-limit <bytes>`, `--externalize-pixel-data`.
+- Add tag editing: `--set <tag-or-keyword=value>`, `--remove <tag-or-keyword>`
+- Add pixel/frame tools: `--pixel-summary`, `--extract-frame <index>`, `--decompress`.
+- Add stdin/stdout support with `-`.
+- Add -c/--compare <file2>

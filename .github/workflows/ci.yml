@@ -110,3 +110,4 @@ jobs:
             artifacts/${{ matrix.package }}
             artifacts/${{ matrix.package }}.sha256
           if-no-files-found: error
+          retention-days: 3
