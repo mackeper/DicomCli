@@ -1,0 +1,46 @@
+name: Question
+description: Ask a usage question or request clarification
+title: "[Question]: "
+labels: ["kind/question", "status/needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        DICOM files often contain protected health information (PHI). Do not attach real patient data, logs, screenshots, or generated files unless they have been verified de-identified.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What do you need help understanding or doing?
+    validations:
+      required: true
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you tried?
+      description: Include commands, options, or documentation you checked.
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Relevant context
+      description: Include version, platform, command, input/output format, or constraints.
+      value: |
+        - DicomCli version:
+        - OS:
+        - Command:
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: phi-check
+    attributes:
+      label: PHI safety
+      description: Confirm that any attached files or pasted output are safe to share publicly.
+      options:
+        - label: I have not included PHI, or I have verified all shared DICOM data/output is de-identified or synthetic.
+          required: true

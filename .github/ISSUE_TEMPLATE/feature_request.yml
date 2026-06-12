@@ -1,0 +1,59 @@
+name: Feature request
+description: Suggest a new capability or improvement
+title: "[Feature]: "
+labels: ["kind/feature", "status/needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for new behavior, output changes, install improvements, documentation examples, or expanded guidance.
+
+  - type: checkboxes
+    id: existing-request
+    attributes:
+      label: Existing request
+      description: Please search existing issues before opening a new one.
+      options:
+        - label: I have searched existing issues for this request.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What are you trying to do, and what is difficult today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior, command shape, output, or documentation change you want.
+    validations:
+      required: true
+
+  - type: textarea
+    id: example
+    attributes:
+      label: Example command or output
+      description: If applicable, show what using this would look like.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What workarounds or other designs have you considered?
+    validations:
+      required: false
+
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: DICOM, DICOMweb, tool behavior, or related issue links.
+    validations:
+      required: false

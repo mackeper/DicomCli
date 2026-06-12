@@ -1,0 +1,85 @@
+name: Bug report
+description: Report a reproducible defect or incorrect behavior
+title: "[Bug]: "
+labels: ["kind/bug", "status/needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for incorrect CLI behavior, crashes, bad output, or incorrect/misleading documentation or help text.
+
+        DICOM files often contain protected health information (PHI). Do not attach real patient data, logs, screenshots, or generated files unless they have been verified de-identified.
+
+  - type: checkboxes
+    id: existing-issue
+    attributes:
+      label: Existing issue
+      description: Please search existing issues before opening a new one.
+      options:
+        - label: I have searched existing issues for this problem.
+          required: true
+
+  - type: textarea
+    id: current-behavior
+    attributes:
+      label: Current behavior
+      description: What happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Include the exact command, relevant output or error, and minimal input details needed to reproduce the problem. Redact sensitive values.
+      placeholder: |
+        Command:
+        dicomcli ...
+
+        Output:
+        ...
+
+        Input details:
+        ...
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include version and platform details.
+      value: |
+        - DicomCli version:
+        - Install method: release archive / built from source / other
+        - OS:
+        - Architecture: x64 / arm64 / other
+        - .NET SDK version, if built from source:
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: phi-check
+    attributes:
+      label: PHI safety
+      description: Confirm that any attached files or pasted output are safe to share publicly.
+      options:
+        - label: I have not included PHI, or I have verified all shared DICOM data/output is de-identified or synthetic.
+          required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Links, references, workarounds, or other details that may help.
+    validations:
+      required: false
