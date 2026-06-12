@@ -35,9 +35,9 @@ Bash scripts apply `DOTNET_GCHeapHardLimit=7C0000000` only when running under Te
 Every code change, one logical unit:
 
 1. Implement.
-2. Validate: `scripts/build.sh`, then `scripts/format.sh`. Failure -> fix + rerun.
+2. Validate: run `scripts/build.sh`. Run `scripts/format.sh` and `scripts/test.sh` only when actual C# code changed. Failure -> fix + rerun.
 3. Review: call `task` with `Reviewer1` or `Reviewer2`.
 4. Act: apply good correctness/style/arch suggestions.
-5. Re-validate after edits.
+5. Re-validate after edits using the same C#-change rule for format and tests.
 6. Repeat review loop max 3 times, or until no findings.
 </developer-review-loop>
