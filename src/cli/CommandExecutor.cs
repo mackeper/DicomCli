@@ -1,9 +1,32 @@
 using System.Text.Json;
 using FellowOakDicom;
 
-internal static class DicomCliApp
+internal static class CommandExecutor
 {
-    public static int ExecuteWrite(string inputPath, string outputPath, bool force, TextWriter error)
+    public static int Execute(CliCommand command, TextWriter output, TextWriter error)
+    {
+        return command switch
+        {
+            ReadCommand read => ExecuteRead(read, output, error),
+            WriteCommand write => ExecuteWrite(write, error),
+            HelpCommand help => Write(help.Text, output),
+            VersionCommand version => WriteLine(version.Text, output),
+            _ => throw new InvalidOperationException($"Unknown command type: {command.GetType().Name}")
+        };
+    }
+
+    public static int ExecuteFailure(ParseFailure failure, TextWriter error)
+    {
+        error.Write(failure.ErrorText);
+        return failure.ExitCode;
+    }
+
+    private static int ExecuteWrite(WriteCommand command, TextWriter error)
+    {
+        return ExecuteWrite(command.InputJsonPath, command.OutputDicomPath, command.Force, error);
+    }
+
+    private static int ExecuteWrite(string inputPath, string outputPath, bool force, TextWriter error)
     {
         if (!HasExtension(inputPath, ".json"))
         {
@@ -92,47 +115,30 @@ internal static class DicomCliApp
         }
     }
 
-    public static int ExecuteRead(string filePath, string format, string binaryFormat, TextWriter output, TextWriter error)
+    private static int ExecuteRead(ReadCommand command, TextWriter output, TextWriter error)
     {
-        if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(binaryFormat, "base64", StringComparison.OrdinalIgnoreCase))
+        if (command.Format == OutputFormat.Json && command.BinaryFormat != BinaryFormat.Base64)
         {
-            error.WriteLine($"--binary-format {binaryFormat} cannot be used with --format json. DICOMweb JSON requires base64 InlineBinary.");
+            error.WriteLine($"--binary-format {FormatBinary(command.BinaryFormat)} cannot be used with --format json. DICOMweb JSON requires base64 InlineBinary.");
             return 1;
         }
 
-        var outputFormat = string.Equals(format, "json", StringComparison.OrdinalIgnoreCase)
-            ? OutputFormat.Json
-            : OutputFormat.Text;
-
-        var binary = (binaryFormat ?? "").ToLowerInvariant() switch
-        {
-            "base64" => BinaryFormat.Base64,
-            "hex" => BinaryFormat.Hex,
-            _ => BinaryFormat.Summary
-        };
-
-        return ExecuteReadCore(filePath, outputFormat, binary, output, error);
-    }
-
-    private static int ExecuteReadCore(string filePath, OutputFormat format, BinaryFormat binaryFormat, TextWriter output, TextWriter error)
-    {
-        if (!HasDicomExtension(filePath))
+        if (!HasDicomExtension(command.FilePath))
         {
             error.WriteLine("Input file for read mode must have extension .dcm or .dicom.");
             return 1;
         }
 
-        if (!File.Exists(filePath))
+        if (!File.Exists(command.FilePath))
         {
-            error.WriteLine($"File not found: {filePath}");
+            error.WriteLine($"File not found: {command.FilePath}");
             return 1;
         }
 
         DicomFile file;
         try
         {
-            file = DicomFile.Open(filePath);
+            file = DicomFile.Open(command.FilePath);
         }
         catch (IOException ex)
         {
@@ -152,24 +158,41 @@ internal static class DicomCliApp
 
         var dataset = file.Dataset;
         var transferSyntaxName = file.FileMetaInfo?.TransferSyntax?.UID?.Name ?? "Unknown";
-        if (format == OutputFormat.Json)
+        if (command.Format == OutputFormat.Json)
         {
             DicomwebJsonWriter.Write(dataset, output);
             return 0;
         }
 
-        DicomTextWriter.Write(dataset, transferSyntaxName, binaryFormat, output);
+        DicomTextWriter.Write(dataset, transferSyntaxName, command.BinaryFormat, output);
         return 0;
-    }
-
-    internal static string ResolveBinaryFormatDefault(string format, string? binaryFormat)
-    {
-        return binaryFormat ?? (format == "json" ? "base64" : "summary");
     }
 
     internal static bool HasDicomExtension(string path)
     {
         return HasExtension(path, ".dcm") || HasExtension(path, ".dicom");
+    }
+
+    private static int WriteLine(string text, TextWriter output)
+    {
+        output.WriteLine(text);
+        return 0;
+    }
+
+    private static int Write(string text, TextWriter output)
+    {
+        output.Write(text);
+        return 0;
+    }
+
+    private static string FormatBinary(BinaryFormat binaryFormat)
+    {
+        return binaryFormat switch
+        {
+            BinaryFormat.Base64 => "base64",
+            BinaryFormat.Hex => "hex",
+            _ => "summary"
+        };
     }
 
     private static bool HasExtension(string path, string extension)

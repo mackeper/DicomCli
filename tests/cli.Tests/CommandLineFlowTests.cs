@@ -256,7 +256,13 @@ public sealed class CommandLineFlowTests
         using var output = new StringWriter();
         using var error = new StringWriter();
 
-        var exitCode = await DicomCliCommands.InvokeAsync(arguments, output, error);
+        var parseResult = ArgumentParser.Parse(arguments);
+        var exitCode = parseResult switch
+        {
+            ParsedCommand parsed => CommandExecutor.Execute(parsed.Command, output, error),
+            ParseFailure failure => CommandExecutor.ExecuteFailure(failure, error),
+            _ => throw new InvalidOperationException($"Unknown parse result type: {parseResult.GetType().Name}")
+        };
 
         return new CommandResult(exitCode, output.ToString(), error.ToString());
     }
