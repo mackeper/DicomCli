@@ -175,7 +175,7 @@ public sealed class WriteFlowTests
         using var output = new StringWriter();
         using var error = new StringWriter();
 
-        var exitCode = DicomCliApp.ExecuteRead(filePath, format, binaryFormat, output, error);
+        var exitCode = CommandExecutor.Execute(new ReadCommand(filePath, ParseOutputFormat(format), ParseBinaryFormat(binaryFormat)), output, error);
 
         return new FlowResult(exitCode, output.ToString(), error.ToString());
     }
@@ -185,9 +185,24 @@ public sealed class WriteFlowTests
         TestDicomFiles.EnsureDicomSetup();
         using var error = new StringWriter();
 
-        var exitCode = DicomCliApp.ExecuteWrite(inputPath, outputPath, force, error);
+        var exitCode = CommandExecutor.Execute(new WriteCommand(inputPath, outputPath, force), TextWriter.Null, error);
 
         return new FlowResult(exitCode, string.Empty, error.ToString());
+    }
+
+    private static OutputFormat ParseOutputFormat(string format)
+    {
+        return format == "json" ? OutputFormat.Json : OutputFormat.Text;
+    }
+
+    private static BinaryFormat ParseBinaryFormat(string binaryFormat)
+    {
+        return binaryFormat switch
+        {
+            "base64" => BinaryFormat.Base64,
+            "hex" => BinaryFormat.Hex,
+            _ => BinaryFormat.Summary
+        };
     }
 
     private sealed record FlowResult(int ExitCode, string Output, string Error);

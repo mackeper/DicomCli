@@ -250,15 +250,21 @@ public sealed class CommandLineFlowTests
         Assert.DoesNotContain("File not found", result.Error);
     }
 
-    private static async Task<CommandResult> ExecuteCommandAsync(params string[] arguments)
+    private static Task<CommandResult> ExecuteCommandAsync(params string[] arguments)
     {
         TestDicomFiles.EnsureDicomSetup();
         using var output = new StringWriter();
         using var error = new StringWriter();
 
-        var exitCode = await DicomCliCommands.InvokeAsync(arguments, output, error);
+        var parseResult = ArgumentParser.Parse(arguments);
+        var exitCode = parseResult switch
+        {
+            ParsedCommand parsed => CommandExecutor.Execute(parsed.Command, output, error),
+            ParseFailure failure => CommandExecutor.ExecuteFailure(failure, error),
+            _ => throw new InvalidOperationException($"Unknown parse result type: {parseResult.GetType().Name}")
+        };
 
-        return new CommandResult(exitCode, output.ToString(), error.ToString());
+        return Task.FromResult(new CommandResult(exitCode, output.ToString(), error.ToString()));
     }
 
     private sealed record CommandResult(int ExitCode, string Output, string Error);

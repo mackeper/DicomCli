@@ -1,8 +1,13 @@
-using System.CommandLine;
 using FellowOakDicom;
 
 new DicomSetupBuilder()
     .RegisterServices(s => s.AddFellowOakDicom())
     .Build();
 
-return await DicomCliCommands.InvokeAsync(args, Console.Out, Console.Error);
+var parseResult = ArgumentParser.Parse(args);
+return parseResult switch
+{
+    ParsedCommand parsed => CommandExecutor.Execute(parsed.Command, Console.Out, Console.Error),
+    ParseFailure failure => CommandExecutor.ExecuteFailure(failure, Console.Error),
+    _ => throw new InvalidOperationException($"Unknown parse result type: {parseResult.GetType().Name}")
+};
