@@ -8,11 +8,11 @@ Keep argument parsing in `ArgumentParser` and command execution in `CommandExecu
 
 ## Archive Formats
 
-Keep release executables inside archives so each download includes `LICENSE` and `README.md`, has one checksum, and preserves metadata such as Linux executable permissions. Use `.tar.gz` for Linux and `.zip` for Windows.
+Keep release executables inside archives so each download has one checksum and preserves metadata such as Linux executable permissions. Do not bundle `LICENSE` or `README.md` in archives because GitHub Releases already links the source archive and repository docs. Use `.tar.gz` for Linux and `.zip` for Windows.
 
 ## Checksums
 
-Use one `.sha256` sidecar per release artifact in standard `hash  filename` format so users can verify the exact file they downloaded without parsing a combined checksum list.
+Use one `SHA256SUMS` file for GitHub Releases in standard `hash  filename` format so users can verify release downloads from one checksums asset.
 
 Linux uses `.tar.gz` because it is the standard Linux distribution format, preserves the executable bit on `dicomcli`, compresses well, and works with `tar -xzf`.
 

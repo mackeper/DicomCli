@@ -100,10 +100,6 @@ jobs:
         if: runner.os == 'Linux'
         run: chmod +x artifacts/${{ matrix.artifact }}/${{ matrix.executable }}
 
-      - name: Include release docs
-        shell: pwsh
-        run: Copy-Item LICENSE,README.md artifacts/${{ matrix.artifact }}/
-
       - name: Smoke test Linux binary
         if: matrix.smoke && runner.os == 'Linux'
         run: |

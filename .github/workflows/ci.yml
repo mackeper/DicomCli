@@ -79,9 +79,6 @@ jobs:
           -p:DebugSymbols=false
           --output artifacts/${{ matrix.artifact }}
 
-      - name: Include release docs
-        run: cp LICENSE README.md artifacts/${{ matrix.artifact }}/
-
       - name: Smoke test Linux binary
         if: matrix.smoke
         run: |

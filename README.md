@@ -26,7 +26,7 @@ Download a release archive from [GitHub Releases](https://github.com/anomalyco/D
 | Linux ARM64 | `dicomcli-linux-arm64.tar.gz` |
 | Windows x64 | `dicomcli-win-x64.zip` |
 
-Each archive contains the binary, `LICENSE`, and `README.md`. Verify downloads against `SHA256SUMS`.
+Each archive contains the binary. Verify downloads against `SHA256SUMS`.
 
 ## Build from Source
 
