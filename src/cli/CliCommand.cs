@@ -16,6 +16,6 @@ internal sealed record VersionCommand(string Text) : CliCommand;
 
 internal abstract record ArgumentParseResult;
 
-internal sealed record ParsedCommand(CliCommand Command) : ArgumentParseResult;
+internal sealed record ParseSuccess(CliCommand Command) : ArgumentParseResult;
 
 internal sealed record ParseFailure(int ExitCode, string ErrorText) : ArgumentParseResult;

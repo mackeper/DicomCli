@@ -259,7 +259,7 @@ public sealed class CommandLineFlowTests
         var parseResult = ArgumentParser.Parse(arguments);
         var exitCode = parseResult switch
         {
-            ParsedCommand parsed => CommandExecutor.Execute(parsed.Command, output, error),
+            ParseSuccess parsed => CommandExecutor.Execute(parsed.Command, output, error),
             ParseFailure failure => CommandExecutor.ExecuteFailure(failure, error),
             _ => throw new InvalidOperationException($"Unknown parse result type: {parseResult.GetType().Name}")
         };

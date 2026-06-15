@@ -10,7 +10,7 @@ internal static class ArgumentParser
     {
         if (args is ["--version"])
         {
-            return new ParsedCommand(new VersionCommand(GetVersionLine()));
+            return new ParseSuccess(new VersionCommand(GetVersionLine()));
         }
 
         using var output = new StringWriter();
@@ -21,12 +21,12 @@ internal static class ArgumentParser
 
         if (command is not null)
         {
-            return new ParsedCommand(command);
+            return new ParseSuccess(command);
         }
 
         if (exitCode == 0 && output.ToString().Length > 0)
         {
-            return new ParsedCommand(new HelpCommand(output.ToString()));
+            return new ParseSuccess(new HelpCommand(output.ToString()));
         }
 
         return new ParseFailure(exitCode, Combine(output.ToString(), error.ToString()));
