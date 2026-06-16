@@ -214,7 +214,7 @@ internal static class ArgumentParser
         var version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
             ?? assembly.GetName().Version?.ToString();
 
-        return $"{GetProductName()} {NonEmpty(version, "0.1.0")}";
+        return $"{GetProductName()} {NonEmpty(version, "0.1.1")}";
     }
 
     private static string NonEmpty(string? value, string fallback)

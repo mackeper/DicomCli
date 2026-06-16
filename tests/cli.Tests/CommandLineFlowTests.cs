@@ -10,7 +10,7 @@ public sealed class CommandLineFlowTests
         Assert.Equal(0, result.ExitCode);
         Assert.Single(result.Output.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries));
         Assert.Contains("DicomCli", result.Output);
-        Assert.Contains("0.1.0", result.Output);
+        Assert.Contains("0.1.1", result.Output);
         Assert.Empty(result.Error);
     }
 
