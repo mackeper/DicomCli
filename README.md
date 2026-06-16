@@ -2,7 +2,7 @@
 
 Command-line tool for reading and writing DICOM files.
 
-[Usage](#usage) · [Install](#install) · [Build](#build-from-source) · [Privacy](#privacy) · [License](#license)
+[Usage](#usage) · [Docs](#docs) · [Install](#install) · [Build](#build-from-source) · [Privacy](#privacy) · [License](#license)
 
 ## Usage
 
@@ -15,6 +15,10 @@ dicomcli input.json --output output.dcm
 Common options: `--format text|json`, `--binary-format summary|hex|base64`, `-o, --output <file>`, `--help`.
 
 Exit codes: `0` success, `1` invalid input.
+
+## Docs
+
+- [Filtering workflows with grep and Select-String](docs/filtering-workflows.md)
 
 ## Install
 
