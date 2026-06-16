@@ -18,7 +18,7 @@ Exit codes: `0` success, `1` invalid input.
 
 ## Install
 
-Download a release archive from [GitHub Releases](https://github.com/anomalyco/DicomCli/releases):
+Download a release archive from [GitHub Releases](https://github.com/mackeper/DicomCli/releases):
 
 | Platform | Archive |
 |----------|---------|
@@ -27,6 +27,14 @@ Download a release archive from [GitHub Releases](https://github.com/anomalyco/D
 | Windows x64 | `dicomcli-win-x64.zip` |
 
 Each archive contains the binary. Verify downloads against `SHA256SUMS`.
+
+Windows PowerShell install:
+
+```powershell
+irm https://raw.githubusercontent.com/mackeper/DicomCli/main/scripts/install.ps1 | iex
+```
+
+The install script downloads `dicomcli-win-x64.zip`, verifies it against `SHA256SUMS`, expands it to `%LOCALAPPDATA%\DicomCli`, and adds `%LOCALAPPDATA%\DicomCli` once to the user `PATH`.
 
 ## Build from Source
 
