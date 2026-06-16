@@ -3,9 +3,12 @@ using FellowOakDicom;
 
 internal static class DicomwebJsonWriter
 {
-    public static void Write(DicomDataset dataset, TextWriter output)
+    private static readonly JsonSerializerOptions CompactOptions = new();
+    private static readonly JsonSerializerOptions PrettyOptions = new() { WriteIndented = true };
+
+    public static void Write(DicomDataset dataset, TextWriter output, bool compact)
     {
-        output.WriteLine(JsonSerializer.Serialize(GetJsonDataset(dataset)));
+        output.WriteLine(JsonSerializer.Serialize(GetJsonDataset(dataset), compact ? CompactOptions : PrettyOptions));
     }
 
     private static SortedDictionary<string, object> GetJsonDataset(DicomDataset dataset)

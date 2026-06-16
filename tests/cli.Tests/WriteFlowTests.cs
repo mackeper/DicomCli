@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace cli.Tests;
 
 public sealed class WriteFlowTests
@@ -23,14 +25,15 @@ public sealed class WriteFlowTests
             var readResult = ExecuteRead(dicomPath, "json", "base64");
 
             Assert.Equal(0, readResult.ExitCode);
-            Assert.Contains("\"00100010\":{\"vr\":\"PN\",\"name\":", readResult.Output);
-            Assert.Contains("\"Value\":[{\"Alphabetic\":\"Doe^Jane\",\"Ideographic\":\"Ideo^Name\",\"Phonetic\":\"Phone^Name\"}]}", readResult.Output);
-            Assert.Contains("\"00100020\":{\"vr\":\"LO\",\"name\":", readResult.Output);
-            Assert.Contains("\"Value\":[\"12345\"]}", readResult.Output);
-            Assert.Contains("\"00720026\":{\"vr\":\"AT\",\"name\":", readResult.Output);
-            Assert.Contains("\"Value\":[\"00100010\"]}", readResult.Output);
-            Assert.Contains("\"7FE00010\":{\"vr\":\"OB\",\"name\":", readResult.Output);
-            Assert.Contains("\"InlineBinary\":\"AA==\"}", readResult.Output);
+            using var readDocument = JsonDocument.Parse(readResult.Output);
+            var root = readDocument.RootElement;
+            var personName = root.GetProperty("00100010").GetProperty("Value")[0];
+            Assert.Equal("Doe^Jane", personName.GetProperty("Alphabetic").GetString());
+            Assert.Equal("Ideo^Name", personName.GetProperty("Ideographic").GetString());
+            Assert.Equal("Phone^Name", personName.GetProperty("Phonetic").GetString());
+            Assert.Equal("12345", root.GetProperty("00100020").GetProperty("Value")[0].GetString());
+            Assert.Equal("00100010", root.GetProperty("00720026").GetProperty("Value")[0].GetString());
+            Assert.Equal("AA==", root.GetProperty("7FE00010").GetProperty("InlineBinary").GetString());
 
             await File.WriteAllTextAsync(roundTripJsonPath, readResult.Output, TestContext.Current.CancellationToken);
             var roundTripWriteResult = ExecuteWrite(roundTripJsonPath, roundTripDicomPath);
@@ -103,15 +106,15 @@ public sealed class WriteFlowTests
 
             Assert.Equal(0, readResult.ExitCode);
             Assert.Empty(readResult.Error);
-            Assert.Contains("\"00191030\":{\"vr\":\"LO\",\"name\":", readResult.Output);
-            Assert.Contains("\"Value\":[\"private-value\"]", readResult.Output);
+            using var readDocument = JsonDocument.Parse(readResult.Output);
+            Assert.Equal("private-value", readDocument.RootElement.GetProperty("00191030").GetProperty("Value")[0].GetString());
             Assert.Equal(0, roundTripWriteResult.ExitCode);
             Assert.Empty(roundTripWriteResult.Error);
             Assert.True(File.Exists(roundTripDicomPath));
             Assert.Equal(0, roundTripReadResult.ExitCode);
             Assert.Empty(roundTripReadResult.Error);
-            Assert.Contains("\"00191030\":{\"vr\":\"LO\",\"name\":", roundTripReadResult.Output);
-            Assert.Contains("\"Value\":[\"private-value\"]", roundTripReadResult.Output);
+            using var roundTripDocument = JsonDocument.Parse(roundTripReadResult.Output);
+            Assert.Equal("private-value", roundTripDocument.RootElement.GetProperty("00191030").GetProperty("Value")[0].GetString());
         }
         finally
         {
@@ -161,7 +164,8 @@ public sealed class WriteFlowTests
             Assert.Empty(writeResult.Error);
             Assert.Equal(0, readResult.ExitCode);
             Assert.Empty(readResult.Error);
-            Assert.Contains("\"00100020\":{\"vr\":\"LO\",\"name\":", readResult.Output);
+            using var readDocument = JsonDocument.Parse(readResult.Output);
+            Assert.True(readDocument.RootElement.TryGetProperty("00100020", out _));
         }
         finally
         {

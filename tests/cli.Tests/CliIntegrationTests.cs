@@ -27,8 +27,8 @@ public sealed class CliIntegrationTests
             var result = await RunCliAsync(sampleFile, "--format", "json");
 
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("\"00080016\":{\"vr\":\"UI\",\"name\":", result.StandardOutput);
-            Assert.Contains("\"00100010\":{\"vr\":\"PN\",\"name\":", result.StandardOutput);
+            Assert.Contains("\"00080016\": {", result.StandardOutput);
+            Assert.Contains("\"00100010\": {", result.StandardOutput);
             Assert.Empty(result.StandardError);
         }
         finally

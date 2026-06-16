@@ -1,4 +1,4 @@
-# Filtering Workflows
+# Example Usage
 
 DicomCli text output prints one DICOM attribute per line, which makes it easy to filter with `grep` on Linux/macOS or `Select-String` in PowerShell.
 
@@ -120,4 +120,4 @@ pwsh scripts/run.ps1 tests/fixtures/sample.dcm | Select-String "Patient|Study|Se
 
 ## JSON Note
 
-`--format json` emits DICOMweb JSON as one compact line. Prefer text output for line-oriented `grep` and `Select-String` workflows.
+`--format json` emits pretty DICOMweb JSON by default. Use `--format json --compact` for one-line JSON, or prefer text output for line-oriented `grep` and `Select-String` workflows.

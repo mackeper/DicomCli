@@ -9,16 +9,17 @@ Command-line tool for reading and writing DICOM files.
 ```bash
 dicomcli image.dcm
 dicomcli image.dcm --format json
+dicomcli image.dcm --format json --compact
 dicomcli input.json --output output.dcm
 ```
 
-Common options: `--format text|json`, `--binary-format summary|hex|base64`, `-o, --output <file>`, `--help`.
+Common options: `--format text|json`, `--compact`, `--binary-format summary|hex|base64`, `-o, --output <file>`, `--help`.
 
 Exit codes: `0` success, `1` invalid input.
 
 ## Docs
 
-- [Filtering workflows with grep and Select-String](docs/filtering-workflows.md)
+- [Example usage](docs/example-usage.md)
 
 ## Install
 

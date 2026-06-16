@@ -26,7 +26,29 @@ public sealed class CommandLineFlowTests
             var result = await ExecuteCommandAsync(sampleFile, "--format", "json");
 
             Assert.Equal(0, result.ExitCode);
+            Assert.Contains("\"00100010\": {", result.Output);
+            Assert.Empty(result.Error);
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ImplicitReadWithCompactJsonFormatInvokesReadFlow()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
+        try
+        {
+            var sampleFile = Path.Combine(workDirectory.FullName, "sample.dcm");
+            await TestDicomFiles.WriteSampleDicomAsync(sampleFile);
+
+            var result = await ExecuteCommandAsync(sampleFile, "--format", "json", "--compact");
+
+            Assert.Equal(0, result.ExitCode);
             Assert.Contains("\"00100010\":{\"vr\":\"PN\",\"name\":", result.Output);
+            Assert.DoesNotContain(Environment.NewLine + "  ", result.Output);
             Assert.Empty(result.Error);
         }
         finally
@@ -49,7 +71,7 @@ public sealed class CommandLineFlowTests
             var result = await ExecuteCommandAsync(sampleFile, "--format", "json");
 
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("\"00100010\":{\"vr\":\"PN\",\"name\":", result.Output);
+            Assert.Contains("\"00100010\": {", result.Output);
             Assert.Empty(result.Error);
         }
         finally
@@ -89,7 +111,7 @@ public sealed class CommandLineFlowTests
             Assert.Contains("AAECAw==", result.Output);
             Assert.Empty(result.Error);
             Assert.Equal(0, jsonResult.ExitCode);
-            Assert.Contains("\"InlineBinary\":\"AAECAw==\"", jsonResult.Output);
+            Assert.Contains("\"InlineBinary\": \"AAECAw==\"", jsonResult.Output);
             Assert.Empty(jsonResult.Error);
         }
         finally
@@ -247,6 +269,16 @@ public sealed class CommandLineFlowTests
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains(expectedError, result.Error);
+        Assert.DoesNotContain("File not found", result.Error);
+    }
+
+    [Fact]
+    public async Task WriteWithCompactOptionReturnsFailure()
+    {
+        var result = await ExecuteCommandAsync("input.json", "-o", "output.dcm", "--compact");
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("--compact cannot be used when writing with -o/--output.", result.Error);
         Assert.DoesNotContain("File not found", result.Error);
     }
 

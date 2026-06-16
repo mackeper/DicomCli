@@ -3,7 +3,8 @@ internal abstract record CliCommand;
 internal sealed record ReadCommand(
     string FilePath,
     OutputFormat Format,
-    BinaryFormat BinaryFormat) : CliCommand;
+    BinaryFormat BinaryFormat,
+    bool CompactJson = false) : CliCommand;
 
 internal sealed record WriteCommand(
     string InputJsonPath,

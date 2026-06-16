@@ -52,6 +52,10 @@ internal static class ArgumentParser
             description: "Binary value format: summary, hex, or base64")
             .FromAmong("summary", "hex", "base64");
 
+        var compactOption = new Option<bool>(
+            aliases: ["--compact"],
+            description: "Emit JSON without indentation.");
+
         var outputOption = new Option<string?>(
             aliases: ["-o", "--output"],
             description: "Path to output DICOM file. When present, input file must be DICOMweb JSON.");
@@ -65,6 +69,7 @@ internal static class ArgumentParser
             fileArgument,
             formatOption,
             binaryFormatOption,
+            compactOption,
             outputOption,
             forceOption
         };
@@ -77,6 +82,7 @@ internal static class ArgumentParser
                 fileArgument,
                 formatOption,
                 binaryFormatOption,
+                compactOption,
                 outputOption,
                 forceOption,
                 error);
@@ -99,6 +105,7 @@ internal static class ArgumentParser
         Argument<string> fileArg,
         Option<string> formatOpt,
         Option<string> binaryOpt,
+        Option<bool> compactOpt,
         Option<string?> outputOpt,
         Option<bool> forceOpt,
         TextWriter error)
@@ -124,6 +131,12 @@ internal static class ArgumentParser
                 return null;
             }
 
+            if (context.ParseResult.GetValueForOption(compactOpt))
+            {
+                error.WriteLine("--compact cannot be used when writing with -o/--output.");
+                return null;
+            }
+
             var inputPath = context.ParseResult.GetValueForArgument(fileArg);
             return new WriteCommand(inputPath, outputPath, context.ParseResult.GetValueForOption(forceOpt));
         }
@@ -138,7 +151,11 @@ internal static class ArgumentParser
         var formatStr = context.ParseResult.GetValueForOption(formatOpt) ?? "text";
         var binaryFormatStr = ResolveBinaryFormatDefault(formatStr, context.ParseResult.GetValueForOption(binaryOpt));
 
-        return new ReadCommand(filePath, ParseOutputFormat(formatStr), ParseBinaryFormat(binaryFormatStr));
+        return new ReadCommand(
+            filePath,
+            ParseOutputFormat(formatStr),
+            ParseBinaryFormat(binaryFormatStr),
+            context.ParseResult.GetValueForOption(compactOpt));
     }
 
     private static string ResolveBinaryFormatDefault(string format, string? binaryFormat)

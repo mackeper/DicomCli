@@ -160,7 +160,7 @@ internal static class CommandExecutor
         var transferSyntaxName = file.FileMetaInfo?.TransferSyntax?.UID?.Name ?? "Unknown";
         if (command.Format == OutputFormat.Json)
         {
-            DicomwebJsonWriter.Write(dataset, output);
+            DicomwebJsonWriter.Write(dataset, output, command.CompactJson);
             return 0;
         }
 
