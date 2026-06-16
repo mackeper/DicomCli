@@ -39,8 +39,6 @@ Windows PowerShell install:
 irm https://raw.githubusercontent.com/mackeper/DicomCli/main/scripts/install.ps1 | iex
 ```
 
-The install script downloads `dicomcli-win-x64.zip`, verifies it against `SHA256SUMS`, expands it to `%LOCALAPPDATA%\DicomCli`, and adds `%LOCALAPPDATA%\DicomCli` once to the user `PATH`.
-
 ## Build from Source
 
 Requires .NET 10 SDK.

@@ -31,8 +31,8 @@ function Get-PathKey {
     $ExpandedPath.TrimEnd('\', '/').ToUpperInvariant()
 }
 
-$InstallPathEntry = '%LOCALAPPDATA%\DicomCli'
 $InstallDir = Join-Path $env:LOCALAPPDATA 'DicomCli'
+$InstallPathEntry = $InstallDir
 $DownloadUrl = 'https://github.com/mackeper/DicomCli/releases/latest/download/dicomcli-win-x64.zip'
 $ChecksumsUrl = 'https://github.com/mackeper/DicomCli/releases/latest/download/SHA256SUMS'
 $TempDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())

@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-CHANGELOG_FILE="$REPO_ROOT/CHANGELOG.md"
+CHANGELOG_FILE="$REPO_ROOT/docs/CHANGELOG.md"
 
 die() {
   printf '[ERROR] %s\n' "$1" >&2
@@ -51,7 +51,7 @@ main() {
 
   printf 'Release %s.\n\n' "$release_tag"
   printf '%s\n' "$changelog_text"
-  printf '\nSee the [changelog](https://github.com/OWNER/REPO/blob/TAG/CHANGELOG.md) for full details.\n'
+  printf '\nSee the [changelog](https://github.com/mackeper/DicomCli/blob/%s/docs/CHANGELOG.md) for full details.\n' "$release_tag"
 }
 
 main "$@"

@@ -6,6 +6,7 @@ Examples use `image.dcm`. Replace it with any `.dcm` or `.dicom` file.
 
 - [Filter text output](example-usage-filter.md) - inspect headers, filter by tag or group, and save small text extracts.
 - [Edit through JSON](example-usage-edit.md) - write DICOMweb JSON to a file, edit values, and convert JSON back to DICOM.
+- [Compare DICOM files](example-usage-compare.md) - compare headers, exact tags, or DICOMweb JSON with standard diff tools.
 
 ## Quick Commands
 

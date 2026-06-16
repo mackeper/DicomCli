@@ -1,4 +1,4 @@
-Update CHANGELOG.md only.
+Update docs/CHANGELOG.md only.
 
 Rules:
 - Only edit the changelog section for the current version.
