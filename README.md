@@ -16,7 +16,7 @@ dicomcli compare left.dcm right.dcm
 
 Common options: `--format text|json`, `--compact`, `--binary-format summary|hex|base64`, `-o, --output <file>`, `compare`, `--help`.
 
-Exit codes: `0` success, `1` invalid input.
+Exit codes: `0` success/equal, `1` invalid input; for `compare`, `1` means different and `2` means invalid input/read error.
 
 ## Docs
 

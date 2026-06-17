@@ -189,6 +189,17 @@ public sealed class CommandLineFlowTests
         }
     }
 
+    [Theory]
+    [InlineData("compare")]
+    [InlineData("compare", "left.dcm")]
+    public async Task CompareCommandWithMissingArgumentsReturnsCompareParseFailure(params string[] arguments)
+    {
+        var result = await ExecuteCommandAsync(arguments);
+
+        Assert.Equal(2, result.ExitCode);
+        Assert.NotEmpty(result.Error);
+    }
+
     [Fact]
     public async Task OutputOptionWithForceOverwritesExistingOutputFile()
     {

@@ -3,11 +3,12 @@ using FellowOakDicom;
 
 internal static class DicomDatasetComparer
 {
-    public static void WriteDifferences(DicomDataset left, DicomDataset right, TextWriter output)
+    public static IReadOnlyList<DicomCompareDifference> Compare(DicomDataset left, DicomDataset right)
     {
         var leftEntries = Flatten(left);
         var rightEntries = Flatten(right);
         var paths = leftEntries.Keys.Concat(rightEntries.Keys).Distinct().Order(StringComparer.Ordinal);
+        var differences = new List<DicomCompareDifference>();
 
         foreach (var path in paths)
         {
@@ -18,14 +19,7 @@ internal static class DicomDatasetComparer
             {
                 if (leftEntry!.Header != rightEntry!.Header || leftEntry.ComparisonValue != rightEntry.ComparisonValue)
                 {
-                    output.WriteLine($"~ {leftEntry.Header}");
-                    if (leftEntry.Header != rightEntry.Header)
-                    {
-                        output.WriteLine($"  right header: {rightEntry.Header}");
-                    }
-
-                    output.WriteLine($"  left:  {leftEntry.DisplayValue}");
-                    output.WriteLine($"  right: {rightEntry.DisplayValue}");
+                    differences.Add(new ChangedDicomCompareDifference(path, leftEntry.ToSide(), rightEntry.ToSide()));
                 }
 
                 continue;
@@ -33,13 +27,45 @@ internal static class DicomDatasetComparer
 
             if (hasRight)
             {
-                output.WriteLine($"+ {rightEntry!.Header}");
-                output.WriteLine($"  right: {rightEntry.DisplayValue}");
+                differences.Add(new AddedDicomCompareDifference(path, rightEntry!.ToSide()));
             }
             else
             {
-                output.WriteLine($"- {leftEntry!.Header}");
-                output.WriteLine($"  left:  {leftEntry.DisplayValue}");
+                differences.Add(new RemovedDicomCompareDifference(path, leftEntry!.ToSide()));
+            }
+        }
+
+        return differences;
+    }
+
+    public static void WriteDifferences(IEnumerable<DicomCompareDifference> differences, TextWriter output)
+    {
+        foreach (var difference in differences)
+        {
+            switch (difference)
+            {
+                case ChangedDicomCompareDifference changed:
+                    var leftHeader = GetHeader(changed.Path, changed.Left);
+                    var rightHeader = GetHeader(changed.Path, changed.Right);
+                    output.WriteLine($"~ {leftHeader}");
+                    if (leftHeader != rightHeader)
+                    {
+                        output.WriteLine($"  right header: {rightHeader}");
+                    }
+
+                    output.WriteLine($"  left:  {changed.Left.DisplayValue}");
+                    output.WriteLine($"  right: {changed.Right.DisplayValue}");
+                    break;
+
+                case AddedDicomCompareDifference added:
+                    output.WriteLine($"+ {GetHeader(added.Path, added.Right)}");
+                    output.WriteLine($"  right: {added.Right.DisplayValue}");
+                    break;
+
+                case RemovedDicomCompareDifference removed:
+                    output.WriteLine($"- {GetHeader(removed.Path, removed.Left)}");
+                    output.WriteLine($"  left:  {removed.Left.DisplayValue}");
+                    break;
             }
         }
     }
@@ -122,6 +148,8 @@ internal static class DicomDatasetComparer
 
     private static string GetName(DicomItem item) => item.Tag.DictionaryEntry?.Name ?? item.Tag.ToString();
 
+    private static string GetHeader(string path, DicomCompareSide side) => $"{path} {side.ValueRepresentation} {side.Name}";
+
     private static bool IsBinaryVR(DicomVR vr)
     {
         return vr == DicomVR.OB
@@ -136,7 +164,19 @@ internal static class DicomDatasetComparer
     private sealed record CompareEntry(string Path, string ValueRepresentation, string Name, string DisplayValue, string ComparisonValue)
     {
         public string Header => $"{Path} {ValueRepresentation} {Name}";
+
+        public DicomCompareSide ToSide() => new(ValueRepresentation, Name, DisplayValue, ComparisonValue);
     }
 
     private sealed record ValueSummary(string Display, string Comparison);
 }
+
+internal abstract record DicomCompareDifference(string Path);
+
+internal sealed record AddedDicomCompareDifference(string Path, DicomCompareSide Right) : DicomCompareDifference(Path);
+
+internal sealed record RemovedDicomCompareDifference(string Path, DicomCompareSide Left) : DicomCompareDifference(Path);
+
+internal sealed record ChangedDicomCompareDifference(string Path, DicomCompareSide Left, DicomCompareSide Right) : DicomCompareDifference(Path);
+
+internal sealed record DicomCompareSide(string ValueRepresentation, string Name, string DisplayValue, string ComparisonValue);

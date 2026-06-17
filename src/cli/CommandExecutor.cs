@@ -121,19 +121,19 @@ internal static class CommandExecutor
         if (!HasDicomExtension(command.LeftPath) || !HasDicomExtension(command.RightPath))
         {
             error.WriteLine("Input files for compare mode must have extension .dcm or .dicom.");
-            return 1;
+            return 2;
         }
 
         if (!File.Exists(command.LeftPath))
         {
             error.WriteLine($"File not found: {command.LeftPath}");
-            return 1;
+            return 2;
         }
 
         if (!File.Exists(command.RightPath))
         {
             error.WriteLine($"File not found: {command.RightPath}");
-            return 1;
+            return 2;
         }
 
         DicomFile leftFile;
@@ -146,21 +146,22 @@ internal static class CommandExecutor
         catch (IOException ex)
         {
             error.WriteLine($"Failed to open DICOM file: {ex.Message}");
-            return 1;
+            return 2;
         }
         catch (UnauthorizedAccessException ex)
         {
             error.WriteLine($"Failed to open DICOM file: {ex.Message}");
-            return 1;
+            return 2;
         }
         catch (DicomException ex)
         {
             error.WriteLine($"Failed to parse DICOM file: {ex.Message}");
-            return 1;
+            return 2;
         }
 
-        DicomDatasetComparer.WriteDifferences(leftFile.Dataset, rightFile.Dataset, output);
-        return 0;
+        var differences = DicomDatasetComparer.Compare(leftFile.Dataset, rightFile.Dataset);
+        DicomDatasetComparer.WriteDifferences(differences, output);
+        return differences.Count == 0 ? 0 : 1;
     }
 
     private static int ExecuteRead(ReadCommand command, TextWriter output, TextWriter error)

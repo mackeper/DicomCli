@@ -29,7 +29,17 @@ internal static class ArgumentParser
             return new ParseSuccess(new HelpCommand(output.ToString()));
         }
 
-        return new ParseFailure(exitCode, Combine(output.ToString(), error.ToString()));
+        return new ParseFailure(GetParseFailureExitCode(args, exitCode), Combine(output.ToString(), error.ToString()));
+    }
+
+    private static int GetParseFailureExitCode(string[] args, int exitCode)
+    {
+        if (exitCode != 0 && args is ["compare", ..])
+        {
+            return 2;
+        }
+
+        return exitCode;
     }
 
     public static RootCommand Build(Action<CliCommand> setCommand, TextWriter error)
