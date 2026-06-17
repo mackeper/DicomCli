@@ -9,6 +9,7 @@ internal static class CommandExecutor
         {
             ReadCommand read => ExecuteRead(read, output, error),
             WriteCommand write => ExecuteWrite(write, error),
+            CompareCommand compare => ExecuteCompare(compare, output, error),
             HelpCommand help => Write(help.Text, output),
             VersionCommand version => WriteLine(version.Text, output),
             _ => throw new InvalidOperationException($"Unknown command type: {command.GetType().Name}")
@@ -113,6 +114,54 @@ internal static class CommandExecutor
             error.WriteLine($"Failed to write DICOM file: {ex.Message}");
             return 1;
         }
+    }
+
+    private static int ExecuteCompare(CompareCommand command, TextWriter output, TextWriter error)
+    {
+        if (!HasDicomExtension(command.LeftPath) || !HasDicomExtension(command.RightPath))
+        {
+            error.WriteLine("Input files for compare mode must have extension .dcm or .dicom.");
+            return 2;
+        }
+
+        if (!File.Exists(command.LeftPath))
+        {
+            error.WriteLine($"File not found: {command.LeftPath}");
+            return 2;
+        }
+
+        if (!File.Exists(command.RightPath))
+        {
+            error.WriteLine($"File not found: {command.RightPath}");
+            return 2;
+        }
+
+        DicomFile leftFile;
+        DicomFile rightFile;
+        try
+        {
+            leftFile = DicomFile.Open(command.LeftPath);
+            rightFile = DicomFile.Open(command.RightPath);
+        }
+        catch (IOException ex)
+        {
+            error.WriteLine($"Failed to open DICOM file: {ex.Message}");
+            return 2;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            error.WriteLine($"Failed to open DICOM file: {ex.Message}");
+            return 2;
+        }
+        catch (DicomException ex)
+        {
+            error.WriteLine($"Failed to parse DICOM file: {ex.Message}");
+            return 2;
+        }
+
+        var differences = DicomDatasetComparer.Compare(leftFile.Dataset, rightFile.Dataset);
+        DicomDatasetComparer.WriteDifferences(differences, output);
+        return differences.Count == 0 ? 0 : 1;
     }
 
     private static int ExecuteRead(ReadCommand command, TextWriter output, TextWriter error)
