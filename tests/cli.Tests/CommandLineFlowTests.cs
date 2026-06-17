@@ -166,8 +166,10 @@ public sealed class CommandLineFlowTests
         }
     }
 
-    [Fact]
-    public async Task CompareCommandWithLeftAndRightInvokesCompareFlow()
+    [Theory]
+    [InlineData("-c")]
+    [InlineData("--compare")]
+    public async Task CompareOptionWithLeftAndRightInvokesCompareFlow(string compareOption)
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
         try
@@ -177,7 +179,7 @@ public sealed class CommandLineFlowTests
             await TestDicomFiles.WriteGoldenJsonSampleDicomAsync(leftFile);
             await TestDicomFiles.WriteGoldenJsonSampleDicomAsync(rightFile);
 
-            var result = await ExecuteCommandAsync("compare", leftFile, rightFile);
+            var result = await ExecuteCommandAsync(leftFile, compareOption, rightFile);
 
             Assert.Equal(0, result.ExitCode);
             Assert.Empty(result.Output);
@@ -190,14 +192,40 @@ public sealed class CommandLineFlowTests
     }
 
     [Theory]
-    [InlineData("compare")]
-    [InlineData("compare", "left.dcm")]
-    public async Task CompareCommandWithMissingArgumentsReturnsCompareParseFailure(params string[] arguments)
+    [InlineData("left.dcm", "-c")]
+    [InlineData("left.dcm", "--compare")]
+    [InlineData("-c", "right.dcm")]
+    public async Task CompareOptionWithMissingArgumentsReturnsCompareParseFailure(params string[] arguments)
     {
         var result = await ExecuteCommandAsync(arguments);
 
         Assert.Equal(2, result.ExitCode);
         Assert.NotEmpty(result.Error);
+    }
+
+    [Theory]
+    [InlineData("--format", "json", "--format cannot be used when comparing with -c/--compare.")]
+    [InlineData("--binary-format", "base64", "--binary-format cannot be used when comparing with -c/--compare.")]
+    [InlineData("-o", "output.dcm", "-o/--output cannot be used when comparing with -c/--compare.")]
+    public async Task CompareOptionWithIncompatibleValueOptionReturnsFailure(string optionName, string optionValue, string expectedError)
+    {
+        var result = await ExecuteCommandAsync("left.dcm", "-c", "right.dcm", optionName, optionValue);
+
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains(expectedError, result.Error);
+        Assert.DoesNotContain("File not found", result.Error);
+    }
+
+    [Theory]
+    [InlineData("--compact", "--compact cannot be used when comparing with -c/--compare.")]
+    [InlineData("--force", "--force cannot be used when comparing with -c/--compare.")]
+    public async Task CompareOptionWithIncompatibleFlagReturnsFailure(string optionName, string expectedError)
+    {
+        var result = await ExecuteCommandAsync("left.dcm", "-c", "right.dcm", optionName);
+
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains(expectedError, result.Error);
+        Assert.DoesNotContain("File not found", result.Error);
     }
 
     [Fact]
@@ -256,6 +284,7 @@ public sealed class CommandLineFlowTests
     [Theory]
     [InlineData("read")]
     [InlineData("write")]
+    [InlineData("compare")]
     public async Task RemovedCommandsReturnParseFailure(string command)
     {
         var result = await ExecuteCommandAsync(command, "input.dcm");

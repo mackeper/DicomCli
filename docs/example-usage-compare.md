@@ -7,7 +7,7 @@ Examples use `left.dcm` and `right.dcm`. Replace them with your own files.
 ## Quick Compare
 
 ```bash
-dicomcli compare left.dcm right.dcm
+dicomcli left.dcm --compare right.dcm
 ```
 
 Example output:

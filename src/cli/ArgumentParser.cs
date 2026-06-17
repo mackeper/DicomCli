@@ -34,7 +34,7 @@ internal static class ArgumentParser
 
     private static int GetParseFailureExitCode(string[] args, int exitCode)
     {
-        if (exitCode != 0 && args is ["compare", ..])
+        if (exitCode != 0 && args.Any(IsCompareOption))
         {
             return 2;
         }
@@ -74,19 +74,21 @@ internal static class ArgumentParser
             aliases: ["--force"],
             description: "Overwrite the output DICOM file when writing.");
 
-        var compareCommand = BuildCompareCommand(setCommand);
+        var compareOption = new Option<string?>(
+            aliases: ["-c", "--compare"],
+            description: "Path to DICOM file to compare with input file.");
 
-        var rootCommand = new RootCommand("Reads DICOM files and writes DICOM files from DICOMweb JSON")
+        var rootCommand = new RootCommand("Reads, compares, and writes DICOM files")
         {
             fileArgument,
             formatOption,
             binaryFormatOption,
             compactOption,
             outputOption,
-            forceOption
+            forceOption,
+            compareOption
         };
         rootCommand.Name = GetProductName();
-        rootCommand.AddCommand(compareCommand);
 
         rootCommand.SetHandler((InvocationContext context) =>
         {
@@ -98,6 +100,7 @@ internal static class ArgumentParser
                 compactOption,
                 outputOption,
                 forceOption,
+                compareOption,
                 error);
 
             if (command is null)
@@ -113,39 +116,6 @@ internal static class ArgumentParser
         return rootCommand;
     }
 
-    private static Command BuildCompareCommand(Action<CliCommand> setCommand)
-    {
-        var leftArgument = new Argument<string>(
-            name: "left",
-            description: "Path to left DICOM file")
-        {
-            Arity = ArgumentArity.ExactlyOne
-        };
-
-        var rightArgument = new Argument<string>(
-            name: "right",
-            description: "Path to right DICOM file")
-        {
-            Arity = ArgumentArity.ExactlyOne
-        };
-
-        var compareCommand = new Command("compare", "Compare two DICOM files")
-        {
-            leftArgument,
-            rightArgument
-        };
-
-        compareCommand.SetHandler((InvocationContext context) =>
-        {
-            setCommand(new CompareCommand(
-                context.ParseResult.GetValueForArgument(leftArgument),
-                context.ParseResult.GetValueForArgument(rightArgument)));
-            context.ExitCode = 0;
-        });
-
-        return compareCommand;
-    }
-
     private static CliCommand? ParseCommandFromContext(
         InvocationContext context,
         Argument<string> fileArg,
@@ -154,8 +124,52 @@ internal static class ArgumentParser
         Option<bool> compactOpt,
         Option<string?> outputOpt,
         Option<bool> forceOpt,
+        Option<string?> compareOpt,
         TextWriter error)
     {
+        var inputPath = context.ParseResult.GetValueForArgument(fileArg);
+        var comparePath = context.ParseResult.GetValueForOption(compareOpt);
+        if (context.ParseResult.FindResultFor(compareOpt)?.Tokens.Count > 0)
+        {
+            if (string.IsNullOrWhiteSpace(comparePath))
+            {
+                error.WriteLine("-c/--compare requires a DICOM file path.");
+                return null;
+            }
+
+            if (context.ParseResult.FindResultFor(outputOpt)?.Tokens.Count > 0)
+            {
+                error.WriteLine("-o/--output cannot be used when comparing with -c/--compare.");
+                return null;
+            }
+
+            if (context.ParseResult.FindResultFor(formatOpt)?.Tokens.Count > 0)
+            {
+                error.WriteLine("--format cannot be used when comparing with -c/--compare.");
+                return null;
+            }
+
+            if (context.ParseResult.FindResultFor(binaryOpt)?.Tokens.Count > 0)
+            {
+                error.WriteLine("--binary-format cannot be used when comparing with -c/--compare.");
+                return null;
+            }
+
+            if (context.ParseResult.GetValueForOption(compactOpt))
+            {
+                error.WriteLine("--compact cannot be used when comparing with -c/--compare.");
+                return null;
+            }
+
+            if (context.ParseResult.GetValueForOption(forceOpt))
+            {
+                error.WriteLine("--force cannot be used when comparing with -c/--compare.");
+                return null;
+            }
+
+            return new CompareCommand(inputPath, comparePath);
+        }
+
         var outputPath = context.ParseResult.GetValueForOption(outputOpt);
         if (context.ParseResult.FindResultFor(outputOpt)?.Tokens.Count > 0)
         {
@@ -183,7 +197,6 @@ internal static class ArgumentParser
                 return null;
             }
 
-            var inputPath = context.ParseResult.GetValueForArgument(fileArg);
             return new WriteCommand(inputPath, outputPath, context.ParseResult.GetValueForOption(forceOpt));
         }
 
@@ -193,15 +206,19 @@ internal static class ArgumentParser
             return null;
         }
 
-        var filePath = context.ParseResult.GetValueForArgument(fileArg);
         var formatStr = context.ParseResult.GetValueForOption(formatOpt) ?? "text";
         var binaryFormatStr = ResolveBinaryFormatDefault(formatStr, context.ParseResult.GetValueForOption(binaryOpt));
 
         return new ReadCommand(
-            filePath,
+            inputPath,
             ParseOutputFormat(formatStr),
             ParseBinaryFormat(binaryFormatStr),
             context.ParseResult.GetValueForOption(compactOpt));
+    }
+
+    private static bool IsCompareOption(string arg)
+    {
+        return arg == "-c" || arg == "--compare";
     }
 
     private static string ResolveBinaryFormatDefault(string format, string? binaryFormat)
