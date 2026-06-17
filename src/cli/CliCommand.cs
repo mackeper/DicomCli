@@ -11,6 +11,10 @@ internal sealed record WriteCommand(
     string OutputDicomPath,
     bool Force) : CliCommand;
 
+internal sealed record CompareCommand(
+    string LeftPath,
+    string RightPath) : CliCommand;
+
 internal sealed record HelpCommand(string Text) : CliCommand;
 
 internal sealed record VersionCommand(string Text) : CliCommand;

@@ -11,9 +11,10 @@ dicomcli image.dcm
 dicomcli image.dcm --format json
 dicomcli image.dcm --format json --compact
 dicomcli input.json --output output.dcm
+dicomcli compare left.dcm right.dcm
 ```
 
-Common options: `--format text|json`, `--compact`, `--binary-format summary|hex|base64`, `-o, --output <file>`, `--help`.
+Common options: `--format text|json`, `--compact`, `--binary-format summary|hex|base64`, `-o, --output <file>`, `compare`, `--help`.
 
 Exit codes: `0` success, `1` invalid input.
 

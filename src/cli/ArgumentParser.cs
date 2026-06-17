@@ -64,6 +64,8 @@ internal static class ArgumentParser
             aliases: ["--force"],
             description: "Overwrite the output DICOM file when writing.");
 
+        var compareCommand = BuildCompareCommand(setCommand);
+
         var rootCommand = new RootCommand("Reads DICOM files and writes DICOM files from DICOMweb JSON")
         {
             fileArgument,
@@ -74,6 +76,7 @@ internal static class ArgumentParser
             forceOption
         };
         rootCommand.Name = GetProductName();
+        rootCommand.AddCommand(compareCommand);
 
         rootCommand.SetHandler((InvocationContext context) =>
         {
@@ -98,6 +101,39 @@ internal static class ArgumentParser
         });
 
         return rootCommand;
+    }
+
+    private static Command BuildCompareCommand(Action<CliCommand> setCommand)
+    {
+        var leftArgument = new Argument<string>(
+            name: "left",
+            description: "Path to left DICOM file")
+        {
+            Arity = ArgumentArity.ExactlyOne
+        };
+
+        var rightArgument = new Argument<string>(
+            name: "right",
+            description: "Path to right DICOM file")
+        {
+            Arity = ArgumentArity.ExactlyOne
+        };
+
+        var compareCommand = new Command("compare", "Compare two DICOM files")
+        {
+            leftArgument,
+            rightArgument
+        };
+
+        compareCommand.SetHandler((InvocationContext context) =>
+        {
+            setCommand(new CompareCommand(
+                context.ParseResult.GetValueForArgument(leftArgument),
+                context.ParseResult.GetValueForArgument(rightArgument)));
+            context.ExitCode = 0;
+        });
+
+        return compareCommand;
     }
 
     private static CliCommand? ParseCommandFromContext(

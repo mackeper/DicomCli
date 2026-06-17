@@ -167,6 +167,29 @@ public sealed class CommandLineFlowTests
     }
 
     [Fact]
+    public async Task CompareCommandWithLeftAndRightInvokesCompareFlow()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
+        try
+        {
+            var leftFile = Path.Combine(workDirectory.FullName, "left.dcm");
+            var rightFile = Path.Combine(workDirectory.FullName, "right.dcm");
+            await TestDicomFiles.WriteGoldenJsonSampleDicomAsync(leftFile);
+            await TestDicomFiles.WriteGoldenJsonSampleDicomAsync(rightFile);
+
+            var result = await ExecuteCommandAsync("compare", leftFile, rightFile);
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Empty(result.Output);
+            Assert.Empty(result.Error);
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task OutputOptionWithForceOverwritesExistingOutputFile()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
