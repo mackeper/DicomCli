@@ -4,6 +4,7 @@ Only include changes that affect users, such as features, bug fixes, and user-fa
 
 ## 0.1.1
 
+- Added `compare` to show DICOM-aware differences between two DICOM files.
 - Changed DICOMweb JSON read output to be pretty-printed by default and added `--compact` for one-line JSON.
 - Added `--force` to overwrite existing DICOM output files when writing from DICOMweb JSON.
 - Renamed the published binary from `cli` to `dicomcli`.
