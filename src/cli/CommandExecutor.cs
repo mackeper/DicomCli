@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using FellowOakDicom;
 
@@ -8,12 +9,79 @@ internal static class CommandExecutor
         return command switch
         {
             ReadCommand read => ExecuteRead(read, output, error),
+            ExtractCommand extract => ExecuteExtract(extract, output, error),
             WriteCommand write => ExecuteWrite(write, error),
             CompareCommand compare => ExecuteCompare(compare, output, error),
             HelpCommand help => Write(help.Text, output),
             VersionCommand version => WriteLine(version.Text, output),
             _ => throw new InvalidOperationException($"Unknown command type: {command.GetType().Name}")
         };
+    }
+
+    private static int ExecuteExtract(ExtractCommand command, TextWriter output, TextWriter error)
+    {
+        if (!HasDicomExtension(command.FilePath))
+        {
+            error.WriteLine("Input file for extract mode must have extension .dcm or .dicom.");
+            return 1;
+        }
+
+        if (!File.Exists(command.FilePath))
+        {
+            error.WriteLine($"File not found: {command.FilePath}");
+            return 1;
+        }
+
+        DicomFile file;
+        try
+        {
+            file = DicomFile.Open(command.FilePath);
+        }
+        catch (IOException ex)
+        {
+            error.WriteLine($"Failed to open DICOM file: {ex.Message}");
+            return 1;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            error.WriteLine($"Failed to open DICOM file: {ex.Message}");
+            return 1;
+        }
+        catch (DicomException ex)
+        {
+            error.WriteLine($"Failed to parse DICOM file: {ex.Message}");
+            return 1;
+        }
+
+        var tag = FormatTag(command.Group, command.Element);
+        var item = file.Dataset.FirstOrDefault(item => item.Tag.Group == command.Group && item.Tag.Element == command.Element);
+        if (item is null)
+        {
+            error.WriteLine($"Tag {tag} was not found.");
+            return 1;
+        }
+
+        if (!DicomExtractWriter.TryGetBinaryData(item, out var data))
+        {
+            error.WriteLine($"Tag {tag} has VR {item.ValueRepresentation.Code}; --extract only supports binary data.");
+            return 1;
+        }
+
+        try
+        {
+            DicomExtractWriter.Write(data, command.Format, output);
+            return 0;
+        }
+        catch (DecoderFallbackException ex)
+        {
+            error.WriteLine($"Failed to decode tag {tag} as UTF-8 XML: {ex.Message}");
+            return 1;
+        }
+        catch (System.Xml.XmlException ex)
+        {
+            error.WriteLine($"Failed to parse tag {tag} as XML: {ex.Message}");
+            return 1;
+        }
     }
 
     public static int ExecuteFailure(ParseFailure failure, TextWriter error)
@@ -243,6 +311,8 @@ internal static class CommandExecutor
             _ => "summary"
         };
     }
+
+    private static string FormatTag(ushort group, ushort element) => $"{group:X4}{element:X4}";
 
     private static bool HasExtension(string path, string extension)
     {

@@ -6,6 +6,12 @@ internal sealed record ReadCommand(
     BinaryFormat BinaryFormat,
     bool CompactJson = false) : CliCommand;
 
+internal sealed record ExtractCommand(
+    string FilePath,
+    ushort Group,
+    ushort Element,
+    ExtractFormat Format) : CliCommand;
+
 internal sealed record WriteCommand(
     string InputJsonPath,
     string OutputDicomPath,

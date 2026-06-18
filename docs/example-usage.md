@@ -22,6 +22,14 @@ Read a DICOM file as DICOMweb JSON:
 dicomcli image.dcm --format json
 ```
 
+Extract a binary tag as base64, hex, or XML:
+
+```bash
+dicomcli image.dcm --extract 7FE00010:base64
+dicomcli image.dcm --extract 7FE00010:hex
+dicomcli image.dcm --extract 32531000:xml
+```
+
 Write a DICOM file from DICOMweb JSON:
 
 ```bash

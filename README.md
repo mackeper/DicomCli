@@ -10,11 +10,12 @@ Command-line tool for reading and writing DICOM files.
 dicomcli image.dcm
 dicomcli image.dcm --format json
 dicomcli image.dcm --format json --compact
+dicomcli image.dcm --extract 7FE00010:base64
 dicomcli input.json --output output.dcm
 dicomcli left.dcm -c right.dcm
 ```
 
-Common options: `--format text|json`, `--compact`, `--binary-format summary|hex|base64`, `-o, --output <file>`, `-c, --compare <file>`, `--help`.
+Common options: `--format text|json`, `--compact`, `--binary-format summary|hex|base64`, `--extract <tag>:base64|hex|xml`, `-o, --output <file>`, `-c, --compare <file>`, `--help`.
 
 Exit codes: `0` success/equal, `1` invalid input; for `-c/--compare`, `1` means different and `2` means invalid input/read error.
 

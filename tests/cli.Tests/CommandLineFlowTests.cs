@@ -121,6 +121,37 @@ public sealed class CommandLineFlowTests
     }
 
     [Fact]
+    public async Task ExtractOptionInvokesExtractFlow()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
+        try
+        {
+            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
+            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
+            await File.WriteAllTextAsync(jsonPath, """
+                {
+                  "00080016": { "vr": "UI", "Value": ["1.2.840.10008.5.1.4.1.1.2"] },
+                  "00080018": { "vr": "UI", "Value": ["1.2.826.0.1.3680043.10.999.1"] },
+                  "32530010": { "vr": "LO", "Value": ["VARIAN"] },
+                  "32531000": { "vr": "UN", "InlineBinary": "AAECAw==" }
+                }
+                """, TestContext.Current.CancellationToken);
+            var writeResult = await ExecuteCommandAsync(jsonPath, "-o", dicomPath);
+            Assert.Equal(0, writeResult.ExitCode);
+
+            var result = await ExecuteCommandAsync(dicomPath, "--extract", "32531000:hex");
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal("00010203" + Environment.NewLine, result.Output);
+            Assert.Empty(result.Error);
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task OutputOptionWithInputAndOutputInvokesWriteFlow()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
@@ -270,6 +301,63 @@ public sealed class CommandLineFlowTests
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.NotEmpty(result.Error);
+    }
+
+    [Theory]
+    [InlineData("32531000", "--extract requires <tag>:<format>.")]
+    [InlineData("32531000:text", "--extract format must be base64, hex, or xml.")]
+    [InlineData("3253100:xml", "--extract tag must be 8 hex characters.")]
+    public async Task ExtractWithInvalidValueReturnsParseFailureBeforeFileAccess(string extractValue, string expectedError)
+    {
+        var result = await ExecuteCommandAsync("missing.dcm", "--extract", extractValue);
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains(expectedError, result.Error);
+        Assert.DoesNotContain("File not found", result.Error);
+    }
+
+    [Theory]
+    [InlineData("--format", "json", "--format cannot be used when extracting with --extract.")]
+    [InlineData("--binary-format", "base64", "--binary-format cannot be used when extracting with --extract.")]
+    public async Task ExtractOptionWithIncompatibleValueOptionReturnsFailure(string optionName, string optionValue, string expectedError)
+    {
+        var result = await ExecuteCommandAsync("input.dcm", "--extract", "32531000:xml", optionName, optionValue);
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains(expectedError, result.Error);
+        Assert.DoesNotContain("File not found", result.Error);
+    }
+
+    [Theory]
+    [InlineData("--compact", "--compact cannot be used when extracting with --extract.")]
+    [InlineData("--force", "--force cannot be used when extracting with --extract.")]
+    public async Task ExtractOptionWithIncompatibleFlagReturnsFailure(string optionName, string expectedError)
+    {
+        var result = await ExecuteCommandAsync("input.dcm", "--extract", "32531000:xml", optionName);
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains(expectedError, result.Error);
+        Assert.DoesNotContain("File not found", result.Error);
+    }
+
+    [Fact]
+    public async Task ExtractOptionWithOutputReturnsFailure()
+    {
+        var result = await ExecuteCommandAsync("input.json", "-o", "output.dcm", "--extract", "32531000:xml");
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("--extract cannot be used when writing with -o/--output.", result.Error);
+        Assert.DoesNotContain("File not found", result.Error);
+    }
+
+    [Fact]
+    public async Task ExtractOptionWithCompareReturnsFailure()
+    {
+        var result = await ExecuteCommandAsync("left.dcm", "-c", "right.dcm", "--extract", "32531000:xml");
+
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("--extract cannot be used when comparing with -c/--compare.", result.Error);
+        Assert.DoesNotContain("File not found", result.Error);
     }
 
     [Fact]

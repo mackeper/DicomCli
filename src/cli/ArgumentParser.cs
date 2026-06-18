@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.CommandLine.IO;
 using System.CommandLine.Invocation;
+using System.Globalization;
 using System.Reflection;
 using System.Text;
 
@@ -78,6 +79,10 @@ internal static class ArgumentParser
             aliases: ["-c", "--compare"],
             description: "Path to DICOM file to compare with input file.");
 
+        var extractOption = new Option<string?>(
+            aliases: ["--extract"],
+            description: "Extract a binary DICOM tag as <tag>:base64, <tag>:hex, or <tag>:xml.");
+
         var rootCommand = new RootCommand("Reads, compares, and writes DICOM files")
         {
             fileArgument,
@@ -86,7 +91,8 @@ internal static class ArgumentParser
             compactOption,
             outputOption,
             forceOption,
-            compareOption
+            compareOption,
+            extractOption
         };
         rootCommand.Name = GetProductName();
 
@@ -101,6 +107,7 @@ internal static class ArgumentParser
                 outputOption,
                 forceOption,
                 compareOption,
+                extractOption,
                 error);
 
             if (command is null)
@@ -125,10 +132,12 @@ internal static class ArgumentParser
         Option<string?> outputOpt,
         Option<bool> forceOpt,
         Option<string?> compareOpt,
+        Option<string?> extractOpt,
         TextWriter error)
     {
         var inputPath = context.ParseResult.GetValueForArgument(fileArg);
         var comparePath = context.ParseResult.GetValueForOption(compareOpt);
+        var hasExtractOption = context.ParseResult.FindResultFor(extractOpt)?.Tokens.Count > 0;
         if (context.ParseResult.FindResultFor(compareOpt)?.Tokens.Count > 0)
         {
             if (string.IsNullOrWhiteSpace(comparePath))
@@ -140,6 +149,12 @@ internal static class ArgumentParser
             if (context.ParseResult.FindResultFor(outputOpt)?.Tokens.Count > 0)
             {
                 error.WriteLine("-o/--output cannot be used when comparing with -c/--compare.");
+                return null;
+            }
+
+            if (hasExtractOption)
+            {
+                error.WriteLine("--extract cannot be used when comparing with -c/--compare.");
                 return null;
             }
 
@@ -191,6 +206,12 @@ internal static class ArgumentParser
                 return null;
             }
 
+            if (hasExtractOption)
+            {
+                error.WriteLine("--extract cannot be used when writing with -o/--output.");
+                return null;
+            }
+
             if (context.ParseResult.GetValueForOption(compactOpt))
             {
                 error.WriteLine("--compact cannot be used when writing with -o/--output.");
@@ -198,6 +219,38 @@ internal static class ArgumentParser
             }
 
             return new WriteCommand(inputPath, outputPath, context.ParseResult.GetValueForOption(forceOpt));
+        }
+
+        if (hasExtractOption)
+        {
+            if (context.ParseResult.FindResultFor(formatOpt)?.Tokens.Count > 0)
+            {
+                error.WriteLine("--format cannot be used when extracting with --extract.");
+                return null;
+            }
+
+            if (context.ParseResult.FindResultFor(binaryOpt)?.Tokens.Count > 0)
+            {
+                error.WriteLine("--binary-format cannot be used when extracting with --extract.");
+                return null;
+            }
+
+            if (context.ParseResult.GetValueForOption(compactOpt))
+            {
+                error.WriteLine("--compact cannot be used when extracting with --extract.");
+                return null;
+            }
+
+            if (context.ParseResult.GetValueForOption(forceOpt))
+            {
+                error.WriteLine("--force cannot be used when extracting with --extract.");
+                return null;
+            }
+
+            var extractValue = context.ParseResult.GetValueForOption(extractOpt);
+            return TryParseExtractValue(extractValue, error, out var group, out var element, out var extractFormat)
+                ? new ExtractCommand(inputPath, group, element, extractFormat)
+                : null;
         }
 
         if (context.ParseResult.GetValueForOption(forceOpt))
@@ -239,6 +292,62 @@ internal static class ArgumentParser
             "hex" => BinaryFormat.Hex,
             _ => BinaryFormat.Summary
         };
+    }
+
+    private static bool TryParseExtractValue(
+        string? value,
+        TextWriter error,
+        out ushort group,
+        out ushort element,
+        out ExtractFormat format)
+    {
+        group = 0;
+        element = 0;
+        format = ExtractFormat.Base64;
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            error.WriteLine("--extract requires <tag>:<format>.");
+            return false;
+        }
+
+        var parts = value.Split(':', 2);
+        if (parts.Length != 2 || string.IsNullOrWhiteSpace(parts[0]) || string.IsNullOrWhiteSpace(parts[1]))
+        {
+            error.WriteLine("--extract requires <tag>:<format>.");
+            return false;
+        }
+
+        if (!TryParseTag(parts[0], out group, out element))
+        {
+            error.WriteLine("--extract tag must be 8 hex characters.");
+            return false;
+        }
+
+        format = parts[1].ToLowerInvariant() switch
+        {
+            "base64" => ExtractFormat.Base64,
+            "hex" => ExtractFormat.Hex,
+            "xml" => ExtractFormat.Xml,
+            _ => ExtractFormat.Base64
+        };
+
+        if (format == ExtractFormat.Base64 && !string.Equals(parts[1], "base64", StringComparison.OrdinalIgnoreCase))
+        {
+            error.WriteLine("--extract format must be base64, hex, or xml.");
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool TryParseTag(string value, out ushort group, out ushort element)
+    {
+        group = 0;
+        element = 0;
+        return value.Length == 8
+            && ushort.TryParse(value[..4], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out group)
+            && ushort.TryParse(value[4..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out element);
     }
 
     private static string Combine(string output, string error)

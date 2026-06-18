@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 
 namespace cli.Tests;
@@ -251,6 +252,98 @@ public sealed class ReadFlowTests
         }
     }
 
+    [Fact]
+    public async Task ExtractXmlBinaryDataWritesFormattedXmlAndMasksSetupPhotoPicture()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-read-flow-");
+        try
+        {
+            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
+            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
+            const string xml = "<ExtendedInterface xmlns:v=\"urn:varian\"><Name>Plan</Name><v:SetupPhotoPicture>AABBCCDD</v:SetupPhotoPicture></ExtendedInterface>";
+            await WritePrivateBinaryDicomAsync(jsonPath, dicomPath, Encoding.UTF8.GetBytes(xml));
+
+            var result = ExecuteExtract(dicomPath, 0x3253, 0x1000, ExtractFormat.Xml);
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("<ExtendedInterface xmlns:v=\"urn:varian\">", result.Output);
+            Assert.Contains("<Name>Plan</Name>", result.Output);
+            Assert.Contains("<v:SetupPhotoPicture>[4 bytes]</v:SetupPhotoPicture>", result.Output);
+            Assert.DoesNotContain("AABBCCDD", result.Output);
+            Assert.Empty(result.Error);
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("base64", "AAECAw==")]
+    [InlineData("hex", "00010203")]
+    public async Task ExtractBinaryDataWritesRequestedFormat(string format, string expectedOutput)
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-read-flow-");
+        try
+        {
+            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
+            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
+            await WritePrivateBinaryDicomAsync(jsonPath, dicomPath, [0, 1, 2, 3]);
+
+            var result = ExecuteExtract(dicomPath, 0x3253, 0x1000, ParseExtractFormat(format));
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal(expectedOutput + Environment.NewLine, result.Output);
+            Assert.Empty(result.Error);
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ExtractNonBinaryTagReturnsFailure()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-read-flow-");
+        try
+        {
+            var sampleFile = Path.Combine(workDirectory.FullName, "sample.dcm");
+            await TestDicomFiles.WriteSampleDicomAsync(sampleFile);
+
+            var result = ExecuteExtract(sampleFile, 0x0010, 0x0010, ExtractFormat.Base64);
+
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains("Tag 00100010 has VR PN; --extract only supports binary data.", result.Error);
+            Assert.Empty(result.Output);
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ExtractMissingTagReturnsFailure()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-read-flow-");
+        try
+        {
+            var sampleFile = Path.Combine(workDirectory.FullName, "sample.dcm");
+            await TestDicomFiles.WriteSampleDicomAsync(sampleFile);
+
+            var result = ExecuteExtract(sampleFile, 0x3253, 0x1000, ExtractFormat.Base64);
+
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains("Tag 32531000 was not found.", result.Error);
+            Assert.Empty(result.Output);
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
     private static FlowResult ExecuteRead(string filePath, string format, string binaryFormat, bool compactJson = false)
     {
         TestDicomFiles.EnsureDicomSetup();
@@ -258,6 +351,17 @@ public sealed class ReadFlowTests
         using var error = new StringWriter();
 
         var exitCode = CommandExecutor.Execute(new ReadCommand(filePath, ParseOutputFormat(format), ParseBinaryFormat(binaryFormat), compactJson), output, error);
+
+        return new FlowResult(exitCode, output.ToString(), error.ToString());
+    }
+
+    private static FlowResult ExecuteExtract(string filePath, ushort group, ushort element, ExtractFormat format)
+    {
+        TestDicomFiles.EnsureDicomSetup();
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = CommandExecutor.Execute(new ExtractCommand(filePath, group, element, format), output, error);
 
         return new FlowResult(exitCode, output.ToString(), error.ToString());
     }
@@ -270,6 +374,23 @@ public sealed class ReadFlowTests
         var exitCode = CommandExecutor.Execute(new WriteCommand(inputPath, outputPath, Force: false), TextWriter.Null, error);
 
         return new FlowResult(exitCode, string.Empty, error.ToString());
+    }
+
+    private static async Task WritePrivateBinaryDicomAsync(string jsonPath, string dicomPath, byte[] data)
+    {
+        var inlineBinary = Convert.ToBase64String(data);
+        await File.WriteAllTextAsync(jsonPath, $$"""
+            {
+              "00080016": { "vr": "UI", "Value": ["1.2.840.10008.5.1.4.1.1.2"] },
+              "00080018": { "vr": "UI", "Value": ["1.2.826.0.1.3680043.10.999.1"] },
+              "32530010": { "vr": "LO", "Value": ["VARIAN"] },
+              "32531000": { "vr": "UN", "InlineBinary": "{{inlineBinary}}" }
+            }
+            """, TestContext.Current.CancellationToken);
+
+        var writeResult = ExecuteWrite(jsonPath, dicomPath);
+        Assert.Equal(0, writeResult.ExitCode);
+        Assert.Empty(writeResult.Error);
     }
 
     private static OutputFormat ParseOutputFormat(string format)
@@ -285,6 +406,11 @@ public sealed class ReadFlowTests
             "hex" => BinaryFormat.Hex,
             _ => BinaryFormat.Summary
         };
+    }
+
+    private static ExtractFormat ParseExtractFormat(string format)
+    {
+        return format == "hex" ? ExtractFormat.Hex : ExtractFormat.Base64;
     }
 
     private sealed record FlowResult(int ExitCode, string Output, string Error);
