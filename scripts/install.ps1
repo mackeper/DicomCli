@@ -37,7 +37,8 @@ function Get-LatestPrerelease {
     param([Parameter(Mandatory = $true)] [string] $Repository)
 
     $ReleasesUrl = "https://api.github.com/repos/$Repository/releases?per_page=100"
-    $Release = Read-JsonUrl $ReleasesUrl |
+    $Releases = Read-JsonUrl $ReleasesUrl
+    $Release = $Releases |
         Where-Object { $_.prerelease -and -not $_.draft } |
         Select-Object -First 1
 
