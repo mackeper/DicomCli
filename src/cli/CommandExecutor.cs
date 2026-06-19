@@ -4,14 +4,15 @@ using FellowOakDicom;
 
 internal static class CommandExecutor
 {
-    public static int Execute(CliCommand command, TextWriter output, TextWriter error)
+    public static int Execute(CliCommand command, TextWriter output, TextWriter error, bool outputColor = false, bool errorColor = false)
     {
+        var styledError = errorColor ? new AnsiColorTextWriter(error, AnsiColor.Red) : error;
         return command switch
         {
-            ReadCommand read => ExecuteRead(read, output, error),
-            ExtractCommand extract => ExecuteExtract(extract, output, error),
-            WriteCommand write => ExecuteWrite(write, error),
-            CompareCommand compare => ExecuteCompare(compare, output, error),
+            ReadCommand read => ExecuteRead(read, output, styledError, outputColor),
+            ExtractCommand extract => ExecuteExtract(extract, output, styledError),
+            WriteCommand write => ExecuteWrite(write, styledError),
+            CompareCommand compare => ExecuteCompare(compare, output, styledError, outputColor),
             HelpCommand help => Write(help.Text, output),
             VersionCommand version => WriteLine(version.Text, output),
             _ => throw new InvalidOperationException($"Unknown command type: {command.GetType().Name}")
@@ -84,9 +85,9 @@ internal static class CommandExecutor
         }
     }
 
-    public static int ExecuteFailure(ParseFailure failure, TextWriter error)
+    public static int ExecuteFailure(ParseFailure failure, TextWriter error, bool errorColor = false)
     {
-        error.Write(failure.ErrorText);
+        error.Write(AnsiColor.Colorize(failure.ErrorText, AnsiColor.Red, errorColor));
         return failure.ExitCode;
     }
 
@@ -184,7 +185,7 @@ internal static class CommandExecutor
         }
     }
 
-    private static int ExecuteCompare(CompareCommand command, TextWriter output, TextWriter error)
+    private static int ExecuteCompare(CompareCommand command, TextWriter output, TextWriter error, bool outputColor)
     {
         if (!HasDicomExtension(command.LeftPath) || !HasDicomExtension(command.RightPath))
         {
@@ -228,11 +229,11 @@ internal static class CommandExecutor
         }
 
         var differences = DicomDatasetComparer.Compare(leftFile.Dataset, rightFile.Dataset);
-        DicomDatasetComparer.WriteDifferences(differences, output);
+        DicomDatasetComparer.WriteDifferences(differences, output, outputColor);
         return differences.Count == 0 ? 0 : 1;
     }
 
-    private static int ExecuteRead(ReadCommand command, TextWriter output, TextWriter error)
+    private static int ExecuteRead(ReadCommand command, TextWriter output, TextWriter error, bool outputColor)
     {
         if (command.Format == OutputFormat.Json && command.BinaryFormat != BinaryFormat.Base64)
         {
@@ -281,7 +282,7 @@ internal static class CommandExecutor
             return 0;
         }
 
-        DicomTextWriter.Write(dataset, transferSyntaxName, command.BinaryFormat, output);
+        DicomTextWriter.Write(dataset, transferSyntaxName, command.BinaryFormat, output, outputColor);
         return 0;
     }
 
@@ -317,5 +318,22 @@ internal static class CommandExecutor
     private static bool HasExtension(string path, string extension)
     {
         return string.Equals(Path.GetExtension(path), extension, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private sealed class AnsiColorTextWriter(TextWriter writer, string color) : TextWriter
+    {
+        public override Encoding Encoding => writer.Encoding;
+
+        public override IFormatProvider FormatProvider => writer.FormatProvider;
+
+        public override void Write(string? value)
+        {
+            writer.Write(AnsiColor.Colorize(value ?? string.Empty, color, enabled: true));
+        }
+
+        public override void WriteLine(string? value)
+        {
+            writer.WriteLine(AnsiColor.Colorize(value ?? string.Empty, color, enabled: true));
+        }
     }
 }

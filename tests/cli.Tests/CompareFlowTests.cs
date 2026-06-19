@@ -66,6 +66,37 @@ public sealed class CompareFlowTests
     }
 
     [Fact]
+    public async Task CompareWithColorEnabledColorsDifferenceMarkers()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-compare-flow-");
+        try
+        {
+            var leftFile = Path.Combine(workDirectory.FullName, "left.dcm");
+            var rightFile = Path.Combine(workDirectory.FullName, "right.dcm");
+            var leftDataset = CreateBaseDataset();
+            leftDataset.Add(DicomTag.PatientName, "Doe^Jane");
+            leftDataset.Add(DicomTag.PatientID, "12345");
+            var rightDataset = CreateBaseDataset();
+            rightDataset.Add(DicomTag.Modality, "MR");
+            rightDataset.Add(DicomTag.PatientName, "Doe^John");
+            await WriteDicomAsync(leftFile, leftDataset);
+            await WriteDicomAsync(rightFile, rightDataset);
+
+            var result = ExecuteCompare(leftFile, rightFile, colorOutput: true);
+
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains("\u001b[32m+\u001b[0m 00080060 CS Modality", result.Output);
+            Assert.Contains("\u001b[33m~\u001b[0m 00100010 PN Patient's Name", result.Output);
+            Assert.Contains("\u001b[31m-\u001b[0m 00100020 LO Patient ID", result.Output);
+            Assert.Empty(result.Error);
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task CompareWithNestedSequenceDifferenceWritesItemPath()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-compare-flow-");
@@ -200,13 +231,13 @@ public sealed class CompareFlowTests
         return new DicomFile(dataset).SaveAsync(path);
     }
 
-    private static FlowResult ExecuteCompare(string leftPath, string rightPath)
+    private static FlowResult ExecuteCompare(string leftPath, string rightPath, bool colorOutput = false)
     {
         TestDicomFiles.EnsureDicomSetup();
         using var output = new StringWriter();
         using var error = new StringWriter();
 
-        var exitCode = CommandExecutor.Execute(new CompareCommand(leftPath, rightPath), output, error);
+        var exitCode = CommandExecutor.Execute(new CompareCommand(leftPath, rightPath), output, error, colorOutput);
 
         return new FlowResult(exitCode, output.ToString(), error.ToString());
     }

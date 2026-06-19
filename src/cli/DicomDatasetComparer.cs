@@ -38,7 +38,7 @@ internal static class DicomDatasetComparer
         return differences;
     }
 
-    public static void WriteDifferences(IEnumerable<DicomCompareDifference> differences, TextWriter output)
+    public static void WriteDifferences(IEnumerable<DicomCompareDifference> differences, TextWriter output, bool color = false)
     {
         foreach (var difference in differences)
         {
@@ -47,7 +47,7 @@ internal static class DicomDatasetComparer
                 case ChangedDicomCompareDifference changed:
                     var leftHeader = GetHeader(changed.Path, changed.Left);
                     var rightHeader = GetHeader(changed.Path, changed.Right);
-                    output.WriteLine($"~ {leftHeader}");
+                    output.WriteLine($"{AnsiColor.Colorize("~", AnsiColor.Yellow, color)} {leftHeader}");
                     if (leftHeader != rightHeader)
                     {
                         output.WriteLine($"  right header: {rightHeader}");
@@ -58,12 +58,12 @@ internal static class DicomDatasetComparer
                     break;
 
                 case AddedDicomCompareDifference added:
-                    output.WriteLine($"+ {GetHeader(added.Path, added.Right)}");
+                    output.WriteLine($"{AnsiColor.Colorize("+", AnsiColor.Green, color)} {GetHeader(added.Path, added.Right)}");
                     output.WriteLine($"  right: {added.Right.DisplayValue}");
                     break;
 
                 case RemovedDicomCompareDifference removed:
-                    output.WriteLine($"- {GetHeader(removed.Path, removed.Left)}");
+                    output.WriteLine($"{AnsiColor.Colorize("-", AnsiColor.Red, color)} {GetHeader(removed.Path, removed.Left)}");
                     output.WriteLine($"  left:  {removed.Left.DisplayValue}");
                     break;
             }

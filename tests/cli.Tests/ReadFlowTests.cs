@@ -29,6 +29,28 @@ public sealed class ReadFlowTests
     }
 
     [Fact]
+    public async Task ReadJsonWithColorEnabledWritesPlainJson()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-read-flow-");
+        try
+        {
+            var sampleFile = Path.Combine(workDirectory.FullName, "sample.dcm");
+            await TestDicomFiles.WriteSampleDicomAsync(sampleFile);
+
+            var result = ExecuteRead(sampleFile, "json", "base64", colorOutput: true);
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("\"00080016\": {", result.Output);
+            AssertDoesNotContainColorPrefix(result.Output);
+            Assert.Empty(result.Error);
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task ReadJsonWithGoldenSampleMatchesStablePrettyDicomwebJson()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-read-flow-");
@@ -136,6 +158,16 @@ public sealed class ReadFlowTests
         Assert.Empty(result.Output);
     }
 
+    [Fact]
+    public void ReadMissingFileWithColorEnabledWritesAnsiError()
+    {
+        var result = ExecuteRead("does-not-exist.dcm", "text", "summary", colorError: true);
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("\u001b[31mFile not found: does-not-exist.dcm\u001b[0m", result.Error);
+        Assert.Empty(result.Output);
+    }
+
     [Theory]
     [InlineData("summary")]
     [InlineData("hex")]
@@ -197,6 +229,27 @@ public sealed class ReadFlowTests
             Assert.Empty(defaultResult.Error);
             Assert.Empty(base64Result.Error);
             Assert.Empty(jsonBase64Result.Error);
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ReadTextWithColorEnabledWritesAnsiOutput()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-read-flow-");
+        try
+        {
+            var sampleFile = Path.Combine(workDirectory.FullName, "sample.dcm");
+            await TestDicomFiles.WriteSampleDicomAsync(sampleFile);
+
+            var result = ExecuteRead(sampleFile, "text", "summary", colorOutput: true);
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("\u001b[36mTransfer Syntax\u001b[0m", result.Output);
+            Assert.Empty(result.Error);
         }
         finally
         {
@@ -303,6 +356,29 @@ public sealed class ReadFlowTests
     }
 
     [Fact]
+    public async Task ExtractBinaryDataWithColorEnabledWritesRawPayload()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-read-flow-");
+        try
+        {
+            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
+            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
+            await WritePrivateBinaryDicomAsync(jsonPath, dicomPath, [0, 1, 2, 3]);
+
+            var result = ExecuteExtract(dicomPath, 0x3253, 0x1000, ExtractFormat.Hex, colorOutput: true);
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal("00010203" + Environment.NewLine, result.Output);
+            AssertDoesNotContainColorPrefix(result.Output);
+            Assert.Empty(result.Error);
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task ExtractNonBinaryTagReturnsFailure()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-read-flow-");
@@ -344,24 +420,24 @@ public sealed class ReadFlowTests
         }
     }
 
-    private static FlowResult ExecuteRead(string filePath, string format, string binaryFormat, bool compactJson = false)
+    private static FlowResult ExecuteRead(string filePath, string format, string binaryFormat, bool compactJson = false, bool colorOutput = false, bool colorError = false)
     {
         TestDicomFiles.EnsureDicomSetup();
         using var output = new StringWriter();
         using var error = new StringWriter();
 
-        var exitCode = CommandExecutor.Execute(new ReadCommand(filePath, ParseOutputFormat(format), ParseBinaryFormat(binaryFormat), compactJson), output, error);
+        var exitCode = CommandExecutor.Execute(new ReadCommand(filePath, ParseOutputFormat(format), ParseBinaryFormat(binaryFormat), compactJson), output, error, colorOutput, colorError);
 
         return new FlowResult(exitCode, output.ToString(), error.ToString());
     }
 
-    private static FlowResult ExecuteExtract(string filePath, ushort group, ushort element, ExtractFormat format)
+    private static FlowResult ExecuteExtract(string filePath, ushort group, ushort element, ExtractFormat format, bool colorOutput = false)
     {
         TestDicomFiles.EnsureDicomSetup();
         using var output = new StringWriter();
         using var error = new StringWriter();
 
-        var exitCode = CommandExecutor.Execute(new ExtractCommand(filePath, group, element, format), output, error);
+        var exitCode = CommandExecutor.Execute(new ExtractCommand(filePath, group, element, format), output, error, colorOutput);
 
         return new FlowResult(exitCode, output.ToString(), error.ToString());
     }
@@ -411,6 +487,14 @@ public sealed class ReadFlowTests
     private static ExtractFormat ParseExtractFormat(string format)
     {
         return format == "hex" ? ExtractFormat.Hex : ExtractFormat.Base64;
+    }
+
+    private static void AssertDoesNotContainColorPrefix(string text)
+    {
+        Assert.DoesNotContain(AnsiColor.Red, text);
+        Assert.DoesNotContain(AnsiColor.Green, text);
+        Assert.DoesNotContain(AnsiColor.Yellow, text);
+        Assert.DoesNotContain(AnsiColor.Cyan, text);
     }
 
     private sealed record FlowResult(int ExitCode, string Output, string Error);

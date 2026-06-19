@@ -2,36 +2,36 @@ using FellowOakDicom;
 
 internal static class DicomTextWriter
 {
-    public static void Write(DicomDataset dataset, string transferSyntaxName, BinaryFormat binaryFormat, TextWriter output)
+    public static void Write(DicomDataset dataset, string transferSyntaxName, BinaryFormat binaryFormat, TextWriter output, bool color = false)
     {
-        output.WriteLine($"Transfer Syntax: {transferSyntaxName}");
+        output.WriteLine($"{AnsiColor.Colorize("Transfer Syntax", AnsiColor.Cyan, color)}: {transferSyntaxName}");
         output.WriteLine();
-        WriteDataset(dataset, 0, binaryFormat, output);
+        WriteDataset(dataset, 0, binaryFormat, output, color);
     }
 
-    private static void WriteDataset(DicomDataset dataset, int indent, BinaryFormat binaryFormat, TextWriter output)
+    private static void WriteDataset(DicomDataset dataset, int indent, BinaryFormat binaryFormat, TextWriter output, bool color)
     {
         foreach (var item in dataset)
         {
             var padding = new string(' ', indent);
             var tagStr = item.ToString();
             var valueStr = GetValueString(item, dataset, binaryFormat);
-            output.WriteLine($"{padding}{tagStr} = {valueStr}");
+            output.WriteLine($"{padding}{AnsiColor.Colorize(tagStr, AnsiColor.Cyan, color)} = {valueStr}");
 
             if (item is DicomSequence sequence)
             {
-                WriteSequence(sequence, indent + 2, binaryFormat, output);
+                WriteSequence(sequence, indent + 2, binaryFormat, output, color);
             }
         }
     }
 
-    private static void WriteSequence(DicomSequence sequence, int indent, BinaryFormat binaryFormat, TextWriter output)
+    private static void WriteSequence(DicomSequence sequence, int indent, BinaryFormat binaryFormat, TextWriter output, bool color)
     {
         for (var i = 0; i < sequence.Items.Count; i++)
         {
             var padding = new string(' ', indent);
-            output.WriteLine($"{padding}Item {i + 1}:");
-            WriteDataset(sequence.Items[i], indent + 2, binaryFormat, output);
+            output.WriteLine($"{padding}{AnsiColor.Colorize($"Item {i + 1}", AnsiColor.Yellow, color)}:");
+            WriteDataset(sequence.Items[i], indent + 2, binaryFormat, output, color);
         }
     }
 
