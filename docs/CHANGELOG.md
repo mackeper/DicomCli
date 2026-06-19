@@ -6,6 +6,9 @@ Only include changes that affect users, such as features, bug fixes, and user-fa
 
 - Added `--extract <tag>:base64|hex|xml` to extract binary DICOM tag data.
 - Added `-c, --compare <file>` to show DICOM-aware differences between two DICOM files.
+
+# 0.1.0
+
 - Changed DICOMweb JSON read output to be pretty-printed by default and added `--compact` for one-line JSON.
 - Added `--force` to overwrite existing DICOM output files when writing from DICOMweb JSON.
 - Renamed the published binary from `cli` to `dicomcli`.
