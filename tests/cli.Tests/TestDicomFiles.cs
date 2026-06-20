@@ -41,6 +41,23 @@ internal static class TestDicomFiles
         return new DicomFile(dataset).SaveAsync(sampleFile);
     }
 
+    public static string GetFixturePath(string fileName)
+    {
+        return Path.Combine(GetRepoRoot(), "tests", "fixtures", fileName);
+    }
+
+    public static string GetRepoRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "DicomCli.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName
+            ?? throw new InvalidOperationException("Could not locate repository root.");
+    }
+
     public static Task WriteGoldenJsonSampleDicomAsync(string sampleFile)
     {
         EnsureDicomSetup();

@@ -7,12 +7,30 @@ public sealed class CliIntegrationTests
     [Fact]
     public void BuiltExecutableUsesDicomcliName()
     {
-        var repoRoot = GetRepoRoot();
-        var configuration = GetBuildConfiguration();
-        var executableName = OperatingSystem.IsWindows() ? "dicomcli.exe" : "dicomcli";
-        var executablePath = Path.Combine(repoRoot, "src", "cli", "bin", configuration, "net10.0", executableName);
+        var executablePath = GetApphostPath();
 
         Assert.True(File.Exists(executablePath), $"Expected built executable at '{executablePath}'.");
+    }
+
+    [Fact]
+    public async Task ApphostVersionPrintsVersionAndExitsSuccessfully()
+    {
+        var result = await RunApphostAsync("--version");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("DicomCli", result.StandardOutput);
+        Assert.Empty(result.StandardError);
+    }
+
+    [Fact]
+    public async Task ApphostReadWithTrackedSampleDicomWritesJsonOutput()
+    {
+        var result = await RunApphostAsync(TestDicomFiles.GetFixturePath("sample.dcm"), "--format", "json");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("\"00080016\": {", result.StandardOutput);
+        Assert.Contains("\"00100010\": {", result.StandardOutput);
+        Assert.Empty(result.StandardError);
     }
 
     [Fact]
@@ -61,7 +79,7 @@ public sealed class CliIntegrationTests
 
     private static async Task<CliResult> RunCliAsync(params string[] arguments)
     {
-        var repoRoot = GetRepoRoot();
+        var repoRoot = TestDicomFiles.GetRepoRoot();
         var configuration = GetBuildConfiguration();
         var cliAssemblyPath = Path.Combine(repoRoot, "src", "cli", "bin", configuration, "net10.0", "dicomcli.dll");
 
@@ -81,6 +99,31 @@ public sealed class CliIntegrationTests
             process.StartInfo.ArgumentList.Add(argument);
         }
 
+        return await RunProcessAsync(process);
+    }
+
+    private static async Task<CliResult> RunApphostAsync(params string[] arguments)
+    {
+        using var process = new Process();
+        process.StartInfo = new ProcessStartInfo
+        {
+            FileName = GetApphostPath(),
+            WorkingDirectory = TestDicomFiles.GetRepoRoot(),
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false
+        };
+
+        foreach (var argument in arguments)
+        {
+            process.StartInfo.ArgumentList.Add(argument);
+        }
+
+        return await RunProcessAsync(process);
+    }
+
+    private static async Task<CliResult> RunProcessAsync(Process process)
+    {
         process.Start();
 
         var standardOutputTask = process.StandardOutput.ReadToEndAsync();
@@ -100,22 +143,16 @@ public sealed class CliIntegrationTests
             await standardErrorTask);
     }
 
+    private static string GetApphostPath()
+    {
+        var executableName = OperatingSystem.IsWindows() ? "dicomcli.exe" : "dicomcli";
+        return Path.Combine(TestDicomFiles.GetRepoRoot(), "src", "cli", "bin", GetBuildConfiguration(), "net10.0", executableName);
+    }
+
     private static string GetBuildConfiguration()
     {
         var pathParts = AppContext.BaseDirectory.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         return pathParts.Contains("Release") ? "Release" : "Debug";
-    }
-
-    private static string GetRepoRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "DicomCli.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName
-            ?? throw new InvalidOperationException("Could not locate repository root.");
     }
 
     private static string GetDotnetHostPath()

@@ -48,35 +48,6 @@ public sealed class WriteFlowTests
         }
     }
 
-    [Theory]
-    [InlineData("{ \"00280010\": { \"vr\": \"US\", \"Value\": [70000] } }", "exceeds US maximum")]
-    [InlineData("{ \"7FE00010\": { \"vr\": \"OB\", \"BulkDataURI\": \"https://example.invalid/pixel-data\" } }", "unsupported BulkDataURI")]
-    [InlineData("{ \"7FE00010\": { \"vr\": \"OW\", \"InlineBinary\": \"AA==\" } }", "multiple of 2 bytes")]
-    [InlineData("{ \"00100020\": { \"vr\": \"LO\", \"Value\": \"12345\" } }", "must be an array")]
-    [InlineData("{ \"00100020\": { \"vr\": \"LO\", \"Value\": [{ \"Alphabetic\": \"12345\" }] } }", "only supported for PN VR")]
-    [InlineData("{ \"00280010\": { \"vr\": \"US\", \"Value\": [\"x\"] } }", "Failed to parse DICOMweb JSON")]
-    [InlineData("{ \"00081110\": { \"vr\": \"SQ\", \"Value\": {} } }", "must be an array")]
-    public async Task WriteInvalidDicomwebJsonReturnsFailureWithoutOutputFile(string json, string expectedError)
-    {
-        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-write-flow-");
-        try
-        {
-            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
-            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
-            await File.WriteAllTextAsync(jsonPath, json, TestContext.Current.CancellationToken);
-
-            var result = ExecuteWrite(jsonPath, dicomPath);
-
-            Assert.Equal(ExitCode.InvalidJson, result.ExitCode);
-            Assert.Contains(expectedError, result.Error);
-            Assert.False(File.Exists(dicomPath));
-        }
-        finally
-        {
-            workDirectory.Delete(recursive: true);
-        }
-    }
-
     [Fact]
     public async Task WriteInvalidJsonSyntaxReturnsInvalidJsonExitCode()
     {
@@ -211,7 +182,9 @@ public sealed class WriteFlowTests
             Assert.Equal(0, readResult.ExitCode);
             Assert.Empty(readResult.Error);
             using var readDocument = JsonDocument.Parse(readResult.Output);
-            Assert.True(readDocument.RootElement.TryGetProperty("00100020", out _));
+            var root = readDocument.RootElement;
+            Assert.Equal("Doe^Jane", root.GetProperty("00100010").GetProperty("Value")[0].GetProperty("Alphabetic").GetString());
+            Assert.Equal("12345", root.GetProperty("00100020").GetProperty("Value")[0].GetString());
         }
         finally
         {

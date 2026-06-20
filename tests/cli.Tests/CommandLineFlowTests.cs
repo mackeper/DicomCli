@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace cli.Tests;
 
 public sealed class CommandLineFlowTests
@@ -289,10 +291,16 @@ public sealed class CommandLineFlowTests
             await File.WriteAllTextAsync(dicomPath, "existing output", TestContext.Current.CancellationToken);
 
             var result = await ExecuteCommandAsync(jsonPath, "-o", dicomPath, "--force");
+            var readResult = await ExecuteCommandAsync(dicomPath, "--format", "json");
 
             Assert.Equal(0, result.ExitCode);
             Assert.Empty(result.Error);
-            Assert.True(new FileInfo(dicomPath).Length > "existing output".Length);
+            Assert.Equal(0, readResult.ExitCode);
+            Assert.Empty(readResult.Error);
+            using var readDocument = JsonDocument.Parse(readResult.Output);
+            var root = readDocument.RootElement;
+            Assert.Equal("Doe^Jane", root.GetProperty("00100010").GetProperty("Value")[0].GetProperty("Alphabetic").GetString());
+            Assert.Equal("12345", root.GetProperty("00100020").GetProperty("Value")[0].GetString());
         }
         finally
         {
