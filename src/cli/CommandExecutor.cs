@@ -24,13 +24,13 @@ internal static class CommandExecutor
         if (!HasDicomExtension(command.FilePath))
         {
             error.WriteLine("Input file for extract mode must have extension .dcm or .dicom.");
-            return 1;
+            return ExitCode.InvalidArguments;
         }
 
         if (!File.Exists(command.FilePath))
         {
             error.WriteLine($"File not found: {command.FilePath}");
-            return 1;
+            return ExitCode.InputUnavailable;
         }
 
         DicomFile file;
@@ -41,17 +41,17 @@ internal static class CommandExecutor
         catch (IOException ex)
         {
             error.WriteLine($"Failed to open DICOM file: {ex.Message}");
-            return 1;
+            return ExitCode.InputUnavailable;
         }
         catch (UnauthorizedAccessException ex)
         {
             error.WriteLine($"Failed to open DICOM file: {ex.Message}");
-            return 1;
+            return ExitCode.InputUnavailable;
         }
         catch (DicomException ex)
         {
             error.WriteLine($"Failed to parse DICOM file: {ex.Message}");
-            return 1;
+            return ExitCode.InvalidDicom;
         }
 
         var tag = FormatTag(command.Group, command.Element);
@@ -59,29 +59,29 @@ internal static class CommandExecutor
         if (item is null)
         {
             error.WriteLine($"Tag {tag} was not found.");
-            return 1;
+            return ExitCode.ValidationFailure;
         }
 
         if (!DicomExtractWriter.TryGetBinaryData(item, out var data))
         {
             error.WriteLine($"Tag {tag} has VR {item.ValueRepresentation.Code}; --extract only supports binary data.");
-            return 1;
+            return ExitCode.ValidationFailure;
         }
 
         try
         {
             DicomExtractWriter.Write(data, command.Format, output);
-            return 0;
+            return ExitCode.Success;
         }
         catch (DecoderFallbackException ex)
         {
             error.WriteLine($"Failed to decode tag {tag} as UTF-8 XML: {ex.Message}");
-            return 1;
+            return ExitCode.ValidationFailure;
         }
         catch (System.Xml.XmlException ex)
         {
             error.WriteLine($"Failed to parse tag {tag} as XML: {ex.Message}");
-            return 1;
+            return ExitCode.ValidationFailure;
         }
     }
 
@@ -101,19 +101,19 @@ internal static class CommandExecutor
         if (!HasExtension(inputPath, ".json"))
         {
             error.WriteLine("Input file for write mode must have extension .json.");
-            return 1;
+            return ExitCode.InvalidArguments;
         }
 
         if (!HasDicomExtension(outputPath))
         {
             error.WriteLine("Output file for write mode must have extension .dcm or .dicom.");
-            return 1;
+            return ExitCode.InvalidArguments;
         }
 
         if (!File.Exists(inputPath))
         {
             error.WriteLine($"File not found: {inputPath}");
-            return 1;
+            return ExitCode.InputUnavailable;
         }
 
         DicomDataset dataset;
@@ -124,7 +124,7 @@ internal static class CommandExecutor
             if (document.RootElement.ValueKind != JsonValueKind.Object)
             {
                 error.WriteLine("DICOMweb JSON root must be an object.");
-                return 1;
+                return ExitCode.InvalidJson;
             }
 
             dataset = DicomwebJsonReader.Read(document.RootElement);
@@ -132,27 +132,32 @@ internal static class CommandExecutor
         catch (JsonException ex)
         {
             error.WriteLine($"Failed to parse JSON file: {ex.Message}");
-            return 1;
+            return ExitCode.InvalidJson;
         }
         catch (IOException ex)
         {
             error.WriteLine($"Failed to read JSON file: {ex.Message}");
-            return 1;
+            return ExitCode.InputUnavailable;
         }
         catch (UnauthorizedAccessException ex)
         {
             error.WriteLine($"Failed to read JSON file: {ex.Message}");
-            return 1;
+            return ExitCode.InputUnavailable;
         }
         catch (DicomException ex)
         {
             error.WriteLine($"Failed to create DICOM file: {ex.Message}");
-            return 1;
+            return ExitCode.InvalidJson;
         }
         catch (FormatException ex)
         {
             error.WriteLine($"Failed to parse DICOMweb JSON: {ex.Message}");
-            return 1;
+            return ExitCode.InvalidJson;
+        }
+        catch (InvalidOperationException ex)
+        {
+            error.WriteLine($"Failed to parse DICOMweb JSON: {ex.Message}");
+            return ExitCode.InvalidJson;
         }
 
         try
@@ -160,28 +165,28 @@ internal static class CommandExecutor
             var file = new DicomFile(dataset);
             using var stream = new FileStream(outputPath, force ? FileMode.Create : FileMode.CreateNew, FileAccess.Write, FileShare.None);
             file.Save(stream);
-            return 0;
+            return ExitCode.Success;
         }
         catch (IOException ex)
         {
             if (!force && File.Exists(outputPath))
             {
                 error.WriteLine($"Output file already exists: {outputPath}. Use --force to overwrite.");
-                return 1;
+                return ExitCode.WriteFailure;
             }
 
             error.WriteLine($"Failed to write DICOM file: {ex.Message}");
-            return 1;
+            return ExitCode.WriteFailure;
         }
         catch (UnauthorizedAccessException ex)
         {
             error.WriteLine($"Failed to write DICOM file: {ex.Message}");
-            return 1;
+            return ExitCode.WriteFailure;
         }
         catch (DicomException ex)
         {
             error.WriteLine($"Failed to write DICOM file: {ex.Message}");
-            return 1;
+            return ExitCode.WriteFailure;
         }
     }
 
@@ -190,19 +195,19 @@ internal static class CommandExecutor
         if (!HasDicomExtension(command.LeftPath) || !HasDicomExtension(command.RightPath))
         {
             error.WriteLine("Input files for compare mode must have extension .dcm or .dicom.");
-            return 2;
+            return ExitCode.InvalidArguments;
         }
 
         if (!File.Exists(command.LeftPath))
         {
             error.WriteLine($"File not found: {command.LeftPath}");
-            return 2;
+            return ExitCode.InputUnavailable;
         }
 
         if (!File.Exists(command.RightPath))
         {
             error.WriteLine($"File not found: {command.RightPath}");
-            return 2;
+            return ExitCode.InputUnavailable;
         }
 
         DicomFile leftFile;
@@ -215,22 +220,22 @@ internal static class CommandExecutor
         catch (IOException ex)
         {
             error.WriteLine($"Failed to open DICOM file: {ex.Message}");
-            return 2;
+            return ExitCode.InputUnavailable;
         }
         catch (UnauthorizedAccessException ex)
         {
             error.WriteLine($"Failed to open DICOM file: {ex.Message}");
-            return 2;
+            return ExitCode.InputUnavailable;
         }
         catch (DicomException ex)
         {
             error.WriteLine($"Failed to parse DICOM file: {ex.Message}");
-            return 2;
+            return ExitCode.InvalidDicom;
         }
 
         var differences = DicomDatasetComparer.Compare(leftFile.Dataset, rightFile.Dataset);
         DicomDatasetComparer.WriteDifferences(differences, output, outputColor);
-        return differences.Count == 0 ? 0 : 1;
+        return differences.Count == 0 ? ExitCode.Success : ExitCode.CompareDifferent;
     }
 
     private static int ExecuteRead(ReadCommand command, TextWriter output, TextWriter error, bool outputColor)
@@ -238,19 +243,19 @@ internal static class CommandExecutor
         if (command.Format == OutputFormat.Json && command.BinaryFormat != BinaryFormat.Base64)
         {
             error.WriteLine($"--binary-format {FormatBinary(command.BinaryFormat)} cannot be used with --format json. DICOMweb JSON requires base64 InlineBinary.");
-            return 1;
+            return ExitCode.InvalidArguments;
         }
 
         if (!HasDicomExtension(command.FilePath))
         {
             error.WriteLine("Input file for read mode must have extension .dcm or .dicom.");
-            return 1;
+            return ExitCode.InvalidArguments;
         }
 
         if (!File.Exists(command.FilePath))
         {
             error.WriteLine($"File not found: {command.FilePath}");
-            return 1;
+            return ExitCode.InputUnavailable;
         }
 
         DicomFile file;
@@ -261,17 +266,17 @@ internal static class CommandExecutor
         catch (IOException ex)
         {
             error.WriteLine($"Failed to open DICOM file: {ex.Message}");
-            return 1;
+            return ExitCode.InputUnavailable;
         }
         catch (UnauthorizedAccessException ex)
         {
             error.WriteLine($"Failed to open DICOM file: {ex.Message}");
-            return 1;
+            return ExitCode.InputUnavailable;
         }
         catch (DicomException ex)
         {
             error.WriteLine($"Failed to parse DICOM file: {ex.Message}");
-            return 1;
+            return ExitCode.InvalidDicom;
         }
 
         var dataset = file.Dataset;
@@ -279,11 +284,11 @@ internal static class CommandExecutor
         if (command.Format == OutputFormat.Json)
         {
             DicomwebJsonWriter.Write(dataset, output, command.CompactJson);
-            return 0;
+            return ExitCode.Success;
         }
 
         DicomTextWriter.Write(dataset, transferSyntaxName, command.BinaryFormat, output, outputColor);
-        return 0;
+        return ExitCode.Success;
     }
 
     internal static bool HasDicomExtension(string path)
@@ -294,13 +299,13 @@ internal static class CommandExecutor
     private static int WriteLine(string text, TextWriter output)
     {
         output.WriteLine(text);
-        return 0;
+        return ExitCode.Success;
     }
 
     private static int Write(string text, TextWriter output)
     {
         output.Write(text);
-        return 0;
+        return ExitCode.Success;
     }
 
     private static string FormatBinary(BinaryFormat binaryFormat)

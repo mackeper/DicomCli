@@ -54,6 +54,8 @@ public sealed class WriteFlowTests
     [InlineData("{ \"7FE00010\": { \"vr\": \"OW\", \"InlineBinary\": \"AA==\" } }", "multiple of 2 bytes")]
     [InlineData("{ \"00100020\": { \"vr\": \"LO\", \"Value\": \"12345\" } }", "must be an array")]
     [InlineData("{ \"00100020\": { \"vr\": \"LO\", \"Value\": [{ \"Alphabetic\": \"12345\" }] } }", "only supported for PN VR")]
+    [InlineData("{ \"00280010\": { \"vr\": \"US\", \"Value\": [\"x\"] } }", "Failed to parse DICOMweb JSON")]
+    [InlineData("{ \"00081110\": { \"vr\": \"SQ\", \"Value\": {} } }", "must be an array")]
     public async Task WriteInvalidDicomwebJsonReturnsFailureWithoutOutputFile(string json, string expectedError)
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-write-flow-");
@@ -65,8 +67,52 @@ public sealed class WriteFlowTests
 
             var result = ExecuteWrite(jsonPath, dicomPath);
 
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(ExitCode.InvalidJson, result.ExitCode);
             Assert.Contains(expectedError, result.Error);
+            Assert.False(File.Exists(dicomPath));
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task WriteInvalidJsonSyntaxReturnsInvalidJsonExitCode()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-write-flow-");
+        try
+        {
+            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
+            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
+            await File.WriteAllTextAsync(jsonPath, "{", TestContext.Current.CancellationToken);
+
+            var result = ExecuteWrite(jsonPath, dicomPath);
+
+            Assert.Equal(ExitCode.InvalidJson, result.ExitCode);
+            Assert.Contains("Failed to parse JSON file:", result.Error);
+            Assert.False(File.Exists(dicomPath));
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task WriteJsonRootArrayReturnsInvalidJsonExitCode()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-write-flow-");
+        try
+        {
+            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
+            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
+            await File.WriteAllTextAsync(jsonPath, "[]", TestContext.Current.CancellationToken);
+
+            var result = ExecuteWrite(jsonPath, dicomPath);
+
+            Assert.Equal(ExitCode.InvalidJson, result.ExitCode);
+            Assert.Contains("DICOMweb JSON root must be an object.", result.Error);
             Assert.False(File.Exists(dicomPath));
         }
         finally
@@ -136,7 +182,7 @@ public sealed class WriteFlowTests
 
             var result = ExecuteWrite(jsonPath, dicomPath);
 
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(ExitCode.WriteFailure, result.ExitCode);
             Assert.Contains("Use --force to overwrite", result.Error);
             Assert.Equal(originalOutput, await File.ReadAllTextAsync(dicomPath, TestContext.Current.CancellationToken));
         }

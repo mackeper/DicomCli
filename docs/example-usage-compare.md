@@ -22,7 +22,7 @@ Example output:
   left:  1.2.3
 ```
 
-No output means no differences were found. Compare uses diff-style exit codes: `0` equal, `1` different, `2` invalid input or unreadable file.
+No output means no differences were found. Compare returns `0` when files are equal, `7` when differences are found, `2` for invalid arguments, `3` for unreadable input, and `4` for invalid DICOM.
 
 ## External Text Compare
 

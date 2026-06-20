@@ -30,17 +30,7 @@ internal static class ArgumentParser
             return new ParseSuccess(new HelpCommand(output.ToString()));
         }
 
-        return new ParseFailure(GetParseFailureExitCode(args, exitCode), Combine(output.ToString(), error.ToString()));
-    }
-
-    private static int GetParseFailureExitCode(string[] args, int exitCode)
-    {
-        if (exitCode != 0 && args.Any(IsCompareOption))
-        {
-            return 2;
-        }
-
-        return exitCode;
+        return new ParseFailure(ExitCode.InvalidArguments, Combine(output.ToString(), error.ToString()));
     }
 
     public static RootCommand Build(Action<CliCommand> setCommand, TextWriter error)
@@ -83,7 +73,19 @@ internal static class ArgumentParser
             aliases: ["--extract"],
             description: "Extract a binary DICOM tag as <tag>:base64, <tag>:hex, or <tag>:xml.");
 
-        var rootCommand = new RootCommand("Reads, compares, and writes DICOM files")
+        var rootCommand = new RootCommand("""
+            Reads, compares, and writes DICOM files
+
+            Exit codes:
+              0  Success
+              1  Validation failure
+              2  Invalid arguments or options
+              3  Input file missing or unreadable
+              4  Invalid DICOM input
+              5  Invalid JSON or DICOMweb JSON
+              6  Write failure
+              7  Compare found differences
+            """)
         {
             fileArgument,
             formatOption,
@@ -267,11 +269,6 @@ internal static class ArgumentParser
             ParseOutputFormat(formatStr),
             ParseBinaryFormat(binaryFormatStr),
             context.ParseResult.GetValueForOption(compactOpt));
-    }
-
-    private static bool IsCompareOption(string arg)
-    {
-        return arg == "-c" || arg == "--compare";
     }
 
     private static string ResolveBinaryFormatDefault(string format, string? binaryFormat)

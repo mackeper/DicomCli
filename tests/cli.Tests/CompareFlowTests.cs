@@ -48,7 +48,7 @@ public sealed class CompareFlowTests
 
             var result = ExecuteCompare(leftFile, rightFile);
 
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(ExitCode.CompareDifferent, result.ExitCode);
             Assert.Contains("+ 00080060 CS Modality", result.Output);
             Assert.Contains("  right: MR", result.Output);
             Assert.Contains("~ 00100010 PN Patient's Name", result.Output);
@@ -84,7 +84,7 @@ public sealed class CompareFlowTests
 
             var result = ExecuteCompare(leftFile, rightFile, colorOutput: true);
 
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(ExitCode.CompareDifferent, result.ExitCode);
             Assert.Contains("\u001b[32m+\u001b[0m 00080060 CS Modality", result.Output);
             Assert.Contains("\u001b[33m~\u001b[0m 00100010 PN Patient's Name", result.Output);
             Assert.Contains("\u001b[31m-\u001b[0m 00100020 LO Patient ID", result.Output);
@@ -113,7 +113,7 @@ public sealed class CompareFlowTests
 
             var result = ExecuteCompare(leftFile, rightFile);
 
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(ExitCode.CompareDifferent, result.ExitCode);
             Assert.Contains("~ 00081110[1].00081155 UI Referenced SOP Instance UID", result.Output);
             Assert.Contains("  left:  1.2.826.0.1.3680043.10.999.101", result.Output);
             Assert.Contains("  right: 1.2.826.0.1.3680043.10.999.102", result.Output);
@@ -142,7 +142,7 @@ public sealed class CompareFlowTests
 
             var result = ExecuteCompare(leftFile, rightFile);
 
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(ExitCode.CompareDifferent, result.ExitCode);
             Assert.Contains("~ 7FE00010 OB Pixel Data", result.Output);
             Assert.Contains("[3 bytes, sha256:", result.Output);
             Assert.DoesNotContain("AQID", result.Output);
@@ -172,7 +172,7 @@ public sealed class CompareFlowTests
 
             var result = ExecuteCompare(leftFile, rightFile);
 
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(ExitCode.CompareDifferent, result.ExitCode);
             Assert.Contains("~ 00100020 LO Patient ID", result.Output);
             Assert.Contains("  left:  \"\"", result.Output);
             Assert.Contains("  right: [empty]", result.Output);
@@ -189,7 +189,7 @@ public sealed class CompareFlowTests
     {
         var result = ExecuteCompare("left.txt", "right.dcm");
 
-        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.Contains(".dcm or .dicom", result.Error);
         Assert.DoesNotContain("File not found", result.Error);
         Assert.Empty(result.Output);
@@ -200,7 +200,7 @@ public sealed class CompareFlowTests
     {
         var result = ExecuteCompare("left.dcm", "right.dcm");
 
-        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(ExitCode.InputUnavailable, result.ExitCode);
         Assert.Contains("File not found: left.dcm", result.Error);
         Assert.Empty(result.Output);
     }

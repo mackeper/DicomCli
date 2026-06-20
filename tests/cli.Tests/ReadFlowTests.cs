@@ -153,7 +153,7 @@ public sealed class ReadFlowTests
     {
         var result = ExecuteRead("does-not-exist.dcm", "text", "summary");
 
-        Assert.Equal(1, result.ExitCode);
+        Assert.Equal(ExitCode.InputUnavailable, result.ExitCode);
         Assert.Contains("File not found: does-not-exist.dcm", result.Error);
         Assert.Empty(result.Output);
     }
@@ -163,9 +163,30 @@ public sealed class ReadFlowTests
     {
         var result = ExecuteRead("does-not-exist.dcm", "text", "summary", colorError: true);
 
-        Assert.Equal(1, result.ExitCode);
+        Assert.Equal(ExitCode.InputUnavailable, result.ExitCode);
         Assert.Contains("\u001b[31mFile not found: does-not-exist.dcm\u001b[0m", result.Error);
         Assert.Empty(result.Output);
+    }
+
+    [Fact]
+    public async Task ReadInvalidDicomReturnsInvalidDicomExitCode()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-read-flow-");
+        try
+        {
+            var invalidDicomPath = Path.Combine(workDirectory.FullName, "invalid.dcm");
+            await File.WriteAllTextAsync(invalidDicomPath, "not dicom", TestContext.Current.CancellationToken);
+
+            var result = ExecuteRead(invalidDicomPath, "text", "summary");
+
+            Assert.Equal(ExitCode.InvalidDicom, result.ExitCode);
+            Assert.Contains("Failed to parse DICOM file:", result.Error);
+            Assert.Empty(result.Output);
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
     }
 
     [Theory]
@@ -181,7 +202,7 @@ public sealed class ReadFlowTests
 
             var result = ExecuteRead(sampleFile, "json", binaryFormat);
 
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
             Assert.Contains($"--binary-format {binaryFormat} cannot be used with --format json", result.Error);
             Assert.Empty(result.Output);
         }
@@ -389,7 +410,7 @@ public sealed class ReadFlowTests
 
             var result = ExecuteExtract(sampleFile, 0x0010, 0x0010, ExtractFormat.Base64);
 
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(ExitCode.ValidationFailure, result.ExitCode);
             Assert.Contains("Tag 00100010 has VR PN; --extract only supports binary data.", result.Error);
             Assert.Empty(result.Output);
         }
@@ -410,7 +431,7 @@ public sealed class ReadFlowTests
 
             var result = ExecuteExtract(sampleFile, 0x3253, 0x1000, ExtractFormat.Base64);
 
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(ExitCode.ValidationFailure, result.ExitCode);
             Assert.Contains("Tag 32531000 was not found.", result.Error);
             Assert.Empty(result.Output);
         }

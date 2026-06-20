@@ -17,7 +17,18 @@ dicomcli left.dcm -c right.dcm
 
 Common options: `--format text|json`, `--compact`, `--binary-format summary|hex|base64`, `--extract <tag>:base64|hex|xml`, `-o, --output <file>`, `-c, --compare <file>`, `--help`.
 
-Exit codes: `0` success/equal, `1` invalid input; for `-c/--compare`, `1` means different and `2` means invalid input/read error.
+Exit codes:
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success |
+| `1` | Validation failure |
+| `2` | Invalid arguments or options |
+| `3` | Input file missing or unreadable |
+| `4` | Invalid DICOM input |
+| `5` | Invalid JSON or DICOMweb JSON |
+| `6` | Write failure |
+| `7` | Compare found differences |
 
 ## Docs
 

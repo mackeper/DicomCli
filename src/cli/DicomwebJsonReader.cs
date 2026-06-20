@@ -114,9 +114,14 @@ internal static class DicomwebJsonReader
 
     private static DicomDataset[] ReadSequenceItems(DicomTag tag, JsonElement attribute)
     {
-        if (!attribute.TryGetProperty("Value", out var values) || values.ValueKind != JsonValueKind.Array)
+        if (!attribute.TryGetProperty("Value", out var values))
         {
             return [];
+        }
+
+        if (values.ValueKind != JsonValueKind.Array)
+        {
+            throw new FormatException($"Value for {tag} must be an array.");
         }
 
         var items = new List<DicomDataset>();

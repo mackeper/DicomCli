@@ -15,6 +15,24 @@ public sealed class CommandLineFlowTests
     }
 
     [Fact]
+    public async Task HelpOptionDocumentsExitCodes()
+    {
+        var result = await ExecuteCommandAsync("--help");
+
+        Assert.Equal(ExitCode.Success, result.ExitCode);
+        Assert.Contains("Exit codes:", result.Output);
+        Assert.Contains("0  Success", result.Output);
+        Assert.Contains("1  Validation failure", result.Output);
+        Assert.Contains("2  Invalid arguments or options", result.Output);
+        Assert.Contains("3  Input file missing or unreadable", result.Output);
+        Assert.Contains("4  Invalid DICOM input", result.Output);
+        Assert.Contains("5  Invalid JSON or DICOMweb JSON", result.Output);
+        Assert.Contains("6  Write failure", result.Output);
+        Assert.Contains("7  Compare found differences", result.Output);
+        Assert.Empty(result.Error);
+    }
+
+    [Fact]
     public async Task ImplicitReadWithJsonFormatInvokesReadFlow()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
@@ -230,7 +248,7 @@ public sealed class CommandLineFlowTests
     {
         var result = await ExecuteCommandAsync(arguments);
 
-        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.NotEmpty(result.Error);
     }
 
@@ -242,7 +260,7 @@ public sealed class CommandLineFlowTests
     {
         var result = await ExecuteCommandAsync("left.dcm", "-c", "right.dcm", optionName, optionValue);
 
-        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.Contains(expectedError, result.Error);
         Assert.DoesNotContain("File not found", result.Error);
     }
@@ -254,7 +272,7 @@ public sealed class CommandLineFlowTests
     {
         var result = await ExecuteCommandAsync("left.dcm", "-c", "right.dcm", optionName);
 
-        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.Contains(expectedError, result.Error);
         Assert.DoesNotContain("File not found", result.Error);
     }
@@ -287,7 +305,7 @@ public sealed class CommandLineFlowTests
     {
         var result = await ExecuteCommandAsync("input.dcm", "--force");
 
-        Assert.NotEqual(0, result.ExitCode);
+        Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.Contains("--force can only be used when writing", result.Error);
         Assert.DoesNotContain("File not found", result.Error);
     }
@@ -299,7 +317,7 @@ public sealed class CommandLineFlowTests
     {
         var result = await ExecuteCommandAsync(["does-not-exist.dcm", .. option]);
 
-        Assert.NotEqual(0, result.ExitCode);
+        Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.NotEmpty(result.Error);
     }
 
@@ -311,7 +329,7 @@ public sealed class CommandLineFlowTests
     {
         var result = await ExecuteCommandAsync("missing.dcm", "--extract", extractValue);
 
-        Assert.NotEqual(0, result.ExitCode);
+        Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.Contains(expectedError, result.Error);
         Assert.DoesNotContain("File not found", result.Error);
     }
@@ -323,7 +341,7 @@ public sealed class CommandLineFlowTests
     {
         var result = await ExecuteCommandAsync("input.dcm", "--extract", "32531000:xml", optionName, optionValue);
 
-        Assert.NotEqual(0, result.ExitCode);
+        Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.Contains(expectedError, result.Error);
         Assert.DoesNotContain("File not found", result.Error);
     }
@@ -335,7 +353,7 @@ public sealed class CommandLineFlowTests
     {
         var result = await ExecuteCommandAsync("input.dcm", "--extract", "32531000:xml", optionName);
 
-        Assert.NotEqual(0, result.ExitCode);
+        Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.Contains(expectedError, result.Error);
         Assert.DoesNotContain("File not found", result.Error);
     }
@@ -345,7 +363,7 @@ public sealed class CommandLineFlowTests
     {
         var result = await ExecuteCommandAsync("input.json", "-o", "output.dcm", "--extract", "32531000:xml");
 
-        Assert.NotEqual(0, result.ExitCode);
+        Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.Contains("--extract cannot be used when writing with -o/--output.", result.Error);
         Assert.DoesNotContain("File not found", result.Error);
     }
@@ -355,7 +373,7 @@ public sealed class CommandLineFlowTests
     {
         var result = await ExecuteCommandAsync("left.dcm", "-c", "right.dcm", "--extract", "32531000:xml");
 
-        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.Contains("--extract cannot be used when comparing with -c/--compare.", result.Error);
         Assert.DoesNotContain("File not found", result.Error);
     }
@@ -365,7 +383,7 @@ public sealed class CommandLineFlowTests
     {
         var result = await ExecuteCommandAsync("input.json", "-o");
 
-        Assert.NotEqual(0, result.ExitCode);
+        Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.NotEmpty(result.Error);
     }
 
@@ -377,7 +395,7 @@ public sealed class CommandLineFlowTests
     {
         var result = await ExecuteCommandAsync(command, "input.dcm");
 
-        Assert.NotEqual(0, result.ExitCode);
+        Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.NotEmpty(result.Error);
     }
 
@@ -386,7 +404,7 @@ public sealed class CommandLineFlowTests
     {
         var result = await ExecuteCommandAsync("missing.json");
 
-        Assert.NotEqual(0, result.ExitCode);
+        Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.Contains(".dcm or .dicom", result.Error);
         Assert.DoesNotContain("File not found", result.Error);
     }
@@ -396,7 +414,7 @@ public sealed class CommandLineFlowTests
     {
         var result = await ExecuteCommandAsync("missing.txt", "-o", "output.dcm");
 
-        Assert.NotEqual(0, result.ExitCode);
+        Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.Contains(".json", result.Error);
         Assert.DoesNotContain("File not found", result.Error);
     }
@@ -406,7 +424,7 @@ public sealed class CommandLineFlowTests
     {
         var result = await ExecuteCommandAsync("missing.json", "-o", "output.txt");
 
-        Assert.NotEqual(0, result.ExitCode);
+        Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.Contains(".dcm or .dicom", result.Error);
         Assert.DoesNotContain("File not found", result.Error);
     }
@@ -418,7 +436,7 @@ public sealed class CommandLineFlowTests
     {
         var result = await ExecuteCommandAsync("input.json", "-o", "output.dcm", optionName, optionValue);
 
-        Assert.NotEqual(0, result.ExitCode);
+        Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.Contains(expectedError, result.Error);
         Assert.DoesNotContain("File not found", result.Error);
     }
@@ -428,7 +446,7 @@ public sealed class CommandLineFlowTests
     {
         var result = await ExecuteCommandAsync("input.json", "-o", "output.dcm", "--compact");
 
-        Assert.NotEqual(0, result.ExitCode);
+        Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.Contains("--compact cannot be used when writing with -o/--output.", result.Error);
         Assert.DoesNotContain("File not found", result.Error);
     }
