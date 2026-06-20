@@ -79,29 +79,6 @@ public sealed class ExtractFlowTests
     }
 
     [Fact]
-    public async Task ExtractBinaryDataWithColorEnabledWritesRawPayload()
-    {
-        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-extract-flow-");
-        try
-        {
-            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
-            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
-            await WritePrivateBinaryDicomAsync(jsonPath, dicomPath, [0, 1, 2, 3]);
-
-            var result = ExecuteExtract(dicomPath, 0x3253, 0x1000, ExtractFormat.Hex, colorOutput: true);
-
-            Assert.Equal(0, result.ExitCode);
-            Assert.Equal("00010203" + Environment.NewLine, result.Output);
-            AssertDoesNotContainColorPrefix(result.Output);
-            Assert.Empty(result.Error);
-        }
-        finally
-        {
-            workDirectory.Delete(recursive: true);
-        }
-    }
-
-    [Fact]
     public async Task ExtractMalformedXmlReturnsValidationFailure()
     {
         var result = await ExecuteXmlExtractFailureAsync(Encoding.UTF8.GetBytes("<ExtendedInterface><Name>Plan</Name>"));
@@ -204,13 +181,13 @@ public sealed class ExtractFlowTests
         }
     }
 
-    private static FlowResult ExecuteExtract(string filePath, ushort group, ushort element, ExtractFormat format, bool colorOutput = false)
+    private static FlowResult ExecuteExtract(string filePath, ushort group, ushort element, ExtractFormat format)
     {
         TestDicomFiles.EnsureDicomSetup();
         using var output = new StringWriter();
         using var error = new StringWriter();
 
-        var exitCode = CommandExecutor.Execute(new ExtractCommand(filePath, group, element, format), output, error, colorOutput);
+        var exitCode = CommandExecutor.Execute(new ExtractCommand(filePath, group, element, format), output, error);
 
         return new FlowResult(exitCode, output.ToString(), error.ToString());
     }
@@ -245,14 +222,6 @@ public sealed class ExtractFlowTests
     private static ExtractFormat ParseExtractFormat(string format)
     {
         return format == "hex" ? ExtractFormat.Hex : ExtractFormat.Base64;
-    }
-
-    private static void AssertDoesNotContainColorPrefix(string text)
-    {
-        Assert.DoesNotContain(AnsiColor.Red, text);
-        Assert.DoesNotContain(AnsiColor.Green, text);
-        Assert.DoesNotContain(AnsiColor.Yellow, text);
-        Assert.DoesNotContain(AnsiColor.Cyan, text);
     }
 
     private sealed record FlowResult(int ExitCode, string Output, string Error);

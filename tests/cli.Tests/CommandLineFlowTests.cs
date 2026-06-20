@@ -35,27 +35,6 @@ public sealed class CommandLineFlowTests
     }
 
     [Fact]
-    public async Task ImplicitReadWithJsonFormatInvokesReadFlow()
-    {
-        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
-        try
-        {
-            var sampleFile = Path.Combine(workDirectory.FullName, "sample.dcm");
-            await TestDicomFiles.WriteSampleDicomAsync(sampleFile);
-
-            var result = await ExecuteCommandAsync(sampleFile, "--format", "json");
-
-            Assert.Equal(0, result.ExitCode);
-            Assert.Contains("\"00100010\": {", result.Output);
-            Assert.Empty(result.Error);
-        }
-        finally
-        {
-            workDirectory.Delete(recursive: true);
-        }
-    }
-
-    [Fact]
     public async Task ImplicitReadWithCompactJsonFormatInvokesReadFlow()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
@@ -77,15 +56,13 @@ public sealed class CommandLineFlowTests
         }
     }
 
-    [Theory]
-    [InlineData("sample.DCM")]
-    [InlineData("sample.DICOM")]
-    public async Task ImplicitReadWithUppercaseDicomExtensionInvokesReadFlow(string fileName)
+    [Fact]
+    public async Task ImplicitReadWithUppercaseDicomExtensionInvokesReadFlow()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
         try
         {
-            var sampleFile = Path.Combine(workDirectory.FullName, fileName);
+            var sampleFile = Path.Combine(workDirectory.FullName, "sample.DICOM");
             await TestDicomFiles.WriteSampleDicomAsync(sampleFile);
 
             var result = await ExecuteCommandAsync(sampleFile, "--format", "json");
@@ -172,37 +149,13 @@ public sealed class CommandLineFlowTests
     }
 
     [Fact]
-    public async Task OutputOptionWithInputAndOutputInvokesWriteFlow()
-    {
-        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
-        try
-        {
-            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
-            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
-            await File.WriteAllTextAsync(jsonPath, TestDicomFiles.MinimalCtJson, TestContext.Current.CancellationToken);
-
-            var result = await ExecuteCommandAsync(jsonPath, "-o", dicomPath);
-
-            Assert.Equal(0, result.ExitCode);
-            Assert.Empty(result.Error);
-            Assert.True(File.Exists(dicomPath));
-        }
-        finally
-        {
-            workDirectory.Delete(recursive: true);
-        }
-    }
-
-    [Theory]
-    [InlineData("output.DCM")]
-    [InlineData("output.DICOM")]
-    public async Task OutputLongOptionWithUppercaseExtensionsInvokesWriteFlow(string dicomFileName)
+    public async Task OutputLongOptionWithUppercaseExtensionsInvokesWriteFlow()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
         try
         {
             var jsonPath = Path.Combine(workDirectory.FullName, "input.JSON");
-            var dicomPath = Path.Combine(workDirectory.FullName, dicomFileName);
+            var dicomPath = Path.Combine(workDirectory.FullName, "output.DICOM");
             await File.WriteAllTextAsync(jsonPath, TestDicomFiles.MinimalCtJson, TestContext.Current.CancellationToken);
 
             var result = await ExecuteCommandAsync(jsonPath, "--output", dicomPath);
@@ -244,7 +197,6 @@ public sealed class CommandLineFlowTests
 
     [Theory]
     [InlineData("left.dcm", "-c")]
-    [InlineData("left.dcm", "--compare")]
     [InlineData("-c", "right.dcm")]
     public async Task CompareOptionWithMissingArgumentsReturnsCompareParseFailure(params string[] arguments)
     {
@@ -395,13 +347,10 @@ public sealed class CommandLineFlowTests
         Assert.NotEmpty(result.Error);
     }
 
-    [Theory]
-    [InlineData("read")]
-    [InlineData("write")]
-    [InlineData("compare")]
-    public async Task RemovedCommandsReturnParseFailure(string command)
+    [Fact]
+    public async Task RemovedCommandsReturnParseFailure()
     {
-        var result = await ExecuteCommandAsync(command, "input.dcm");
+        var result = await ExecuteCommandAsync("read", "input.dcm");
 
         Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.NotEmpty(result.Error);

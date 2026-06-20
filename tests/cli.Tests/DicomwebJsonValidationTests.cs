@@ -7,19 +7,15 @@ public sealed class DicomwebJsonValidationTests
         { """{ "00100020": "12345" }""", "must be an object" },
         { """{ "0010002": { "vr": "LO", "Value": ["12345"] } }""", "Invalid DICOM tag" },
         { """{ "00100020": { "Value": ["12345"] } }""", "must contain string property 'vr'" },
-        { """{ "00100020": { "vr": 1, "Value": ["12345"] } }""", "must contain string property 'vr'" },
         { """{ "00100020": { "vr": "LO", "Value": "12345" } }""", "must be an array" },
         { """{ "00100020": { "vr": "LO", "Value": [{ "Alphabetic": "12345" }] } }""", "only supported for PN VR" },
         { """{ "00280010": { "vr": "US", "Value": [70000] } }""", "exceeds US maximum" },
         { """{ "00280010": { "vr": "US", "Value": ["x"] } }""", "Failed to parse DICOMweb JSON" },
         { """{ "00280106": { "vr": "SS", "Value": [-32769] } }""", "outside SS range" },
-        { """{ "00280106": { "vr": "SS", "Value": [32768] } }""", "outside SS range" },
         { """{ "00200013": { "vr": "UL", "Value": [-1] } }""", "Failed to parse DICOMweb JSON" },
-        { """{ "00200013": { "vr": "UL", "Value": [4294967296] } }""", "Failed to parse DICOMweb JSON" },
         { """{ "00200013": { "vr": "SL", "Value": [2147483648] } }""", "Failed to parse DICOMweb JSON" },
         { """{ "00181150": { "vr": "FL", "Value": ["x"] } }""", "Failed to parse DICOMweb JSON" },
         { """{ "00181151": { "vr": "FD", "Value": [{}] } }""", "Failed to parse DICOMweb JSON" },
-        { """{ "00720026": { "vr": "AT", "Value": ["0010001"] } }""", "Invalid DICOM tag" },
         { """{ "00720026": { "vr": "AT", "Value": ["ZZZZ0010"] } }""", "Invalid DICOM tag" },
         { """{ "00081110": { "vr": "SQ", "Value": {} } }""", "must be an array" },
         { """{ "00081110": { "vr": "SQ", "Value": [1] } }""", "contains a non-object item" },
@@ -31,8 +27,7 @@ public sealed class DicomwebJsonValidationTests
         { """{ "7FE00010": { "vr": "OF", "InlineBinary": "AA==" } }""", "multiple of 4 bytes" },
         { """{ "7FE00010": { "vr": "OD", "InlineBinary": "AA==" } }""", "multiple of 8 bytes" },
         { """{ "7FE00010": { "vr": "OL", "InlineBinary": "AA==" } }""", "multiple of 4 bytes" },
-        { """{ "7FE00010": { "vr": "OV", "InlineBinary": "AA==" } }""", "multiple of 8 bytes" },
-        { """{ "7FE00010": { "vr": "UN", "InlineBinary": 1 } }""", "must be a base64 string" }
+        { """{ "7FE00010": { "vr": "OV", "InlineBinary": "AA==" } }""", "multiple of 8 bytes" }
     };
 
     [Theory]

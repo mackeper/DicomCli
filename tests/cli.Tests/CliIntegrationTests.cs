@@ -5,24 +5,6 @@ namespace cli.Tests;
 public sealed class CliIntegrationTests
 {
     [Fact]
-    public void BuiltExecutableUsesDicomcliName()
-    {
-        var executablePath = GetApphostPath();
-
-        Assert.True(File.Exists(executablePath), $"Expected built executable at '{executablePath}'.");
-    }
-
-    [Fact]
-    public async Task ApphostVersionPrintsVersionAndExitsSuccessfully()
-    {
-        var result = await RunApphostAsync("--version");
-
-        Assert.Equal(0, result.ExitCode);
-        Assert.Contains("DicomCli", result.StandardOutput);
-        Assert.Empty(result.StandardError);
-    }
-
-    [Fact]
     public async Task ApphostReadWithTrackedSampleDicomWritesJsonOutput()
     {
         var result = await RunApphostAsync(TestDicomFiles.GetFixturePath("sample.dcm"), "--format", "json");

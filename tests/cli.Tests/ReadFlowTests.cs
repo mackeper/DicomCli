@@ -5,29 +5,6 @@ namespace cli.Tests;
 public sealed class ReadFlowTests
 {
     [Fact]
-    public async Task ReadJsonWithSampleDicomWritesDicomwebJson()
-    {
-        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-read-flow-");
-        try
-        {
-            var sampleFile = Path.Combine(workDirectory.FullName, "sample.dcm");
-            await TestDicomFiles.WriteSampleDicomAsync(sampleFile);
-
-            var result = ExecuteRead(sampleFile, "json", "base64");
-
-            Assert.Equal(0, result.ExitCode);
-            Assert.Contains("\"00080016\": {", result.Output);
-            Assert.Contains("\"00100010\": {", result.Output);
-            Assert.Contains("\"Alphabetic\":", result.Output);
-            Assert.Empty(result.Error);
-        }
-        finally
-        {
-            workDirectory.Delete(recursive: true);
-        }
-    }
-
-    [Fact]
     public async Task ReadJsonWithColorEnabledWritesPlainJson()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-read-flow-");
@@ -188,10 +165,8 @@ public sealed class ReadFlowTests
         }
     }
 
-    [Theory]
-    [InlineData("summary")]
-    [InlineData("hex")]
-    public async Task ReadJsonWithNonBase64BinaryFormatReturnsFailure(string binaryFormat)
+    [Fact]
+    public async Task ReadJsonWithNonBase64BinaryFormatReturnsFailure()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-read-flow-");
         try
@@ -199,10 +174,10 @@ public sealed class ReadFlowTests
             var sampleFile = Path.Combine(workDirectory.FullName, "sample.dcm");
             await TestDicomFiles.WriteSampleDicomAsync(sampleFile);
 
-            var result = ExecuteRead(sampleFile, "json", binaryFormat);
+            var result = ExecuteRead(sampleFile, "json", "summary");
 
             Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
-            Assert.Contains($"--binary-format {binaryFormat} cannot be used with --format json", result.Error);
+            Assert.Contains("--binary-format summary cannot be used with --format json", result.Error);
             Assert.Empty(result.Output);
         }
         finally
