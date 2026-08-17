@@ -15,7 +15,8 @@ internal sealed record ExtractCommand(
 internal sealed record WriteCommand(
     string InputJsonPath,
     string OutputDicomPath,
-    bool Force) : CliCommand;
+    bool Force,
+    bool SkipValidation = false) : CliCommand;
 
 internal sealed record CompareCommand(
     string LeftPath,

@@ -1,6 +1,8 @@
 using System.Text;
 using System.Text.Json;
 using FellowOakDicom;
+using FellowOakDicom.IO;
+using FellowOakDicom.IO.Writer;
 
 internal static class CommandExecutor
 {
@@ -93,10 +95,10 @@ internal static class CommandExecutor
 
     private static int ExecuteWrite(WriteCommand command, TextWriter error)
     {
-        return ExecuteWrite(command.InputJsonPath, command.OutputDicomPath, command.Force, error);
+        return ExecuteWrite(command.InputJsonPath, command.OutputDicomPath, command.Force, command.SkipValidation, error);
     }
 
-    private static int ExecuteWrite(string inputPath, string outputPath, bool force, TextWriter error)
+    private static int ExecuteWrite(string inputPath, string outputPath, bool force, bool skipValidation, TextWriter error)
     {
         if (!HasExtension(inputPath, ".json"))
         {
@@ -127,7 +129,7 @@ internal static class CommandExecutor
                 return ExitCode.InvalidJson;
             }
 
-            dataset = DicomwebJsonReader.Read(document.RootElement);
+            dataset = DicomwebJsonReader.Read(document.RootElement, validateItems: !skipValidation);
         }
         catch (JsonException ex)
         {
@@ -162,9 +164,18 @@ internal static class CommandExecutor
 
         try
         {
-            var file = new DicomFile(dataset);
-            using var stream = new FileStream(outputPath, force ? FileMode.Create : FileMode.CreateNew, FileAccess.Write, FileShare.None);
-            file.Save(stream);
+            if (skipValidation)
+            {
+                using var stream = new FileStream(outputPath, force ? FileMode.Create : FileMode.CreateNew, FileAccess.Write, FileShare.None);
+                SaveBestEffortDicom(stream, dataset);
+            }
+            else
+            {
+                var file = new DicomFile(dataset);
+                using var stream = new FileStream(outputPath, force ? FileMode.Create : FileMode.CreateNew, FileAccess.Write, FileShare.None);
+                file.Save(stream);
+            }
+
             return ExitCode.Success;
         }
         catch (IOException ex)
@@ -187,6 +198,51 @@ internal static class CommandExecutor
         {
             error.WriteLine($"Failed to write DICOM file: {ex.Message}");
             return ExitCode.WriteFailure;
+        }
+    }
+
+    private static void SaveBestEffortDicom(Stream stream, DicomDataset dataset)
+    {
+        var fileMetaInfo = CreateBestEffortFileMetaInformation(dataset);
+        var target = new StreamByteTarget(stream);
+        var writer = new DicomFileWriter(DicomWriteOptions.Default);
+
+        writer.Write(target, fileMetaInfo, dataset);
+    }
+
+    private static DicomFileMetaInformation CreateBestEffortFileMetaInformation(DicomDataset dataset)
+    {
+        var fileMetaInfo = new DicomFileMetaInformation
+        {
+            Version = [0x00, 0x01],
+            TransferSyntax = DicomTransferSyntax.ExplicitVRLittleEndian,
+            ImplementationClassUID = DicomImplementation.ClassUID,
+            ImplementationVersionName = DicomImplementation.Version
+        };
+
+        TryCopyFileMetaUid(dataset, DicomTag.SOPClassUID, uid => fileMetaInfo.MediaStorageSOPClassUID = uid);
+        TryCopyFileMetaUid(dataset, DicomTag.SOPInstanceUID, uid => fileMetaInfo.MediaStorageSOPInstanceUID = uid);
+
+        return fileMetaInfo;
+    }
+
+    private static void TryCopyFileMetaUid(DicomDataset dataset, DicomTag tag, Action<DicomUID> setValue)
+    {
+        try
+        {
+            if (dataset.TryGetSingleValue(tag, out DicomUID uid))
+            {
+                setValue(uid);
+            }
+        }
+        catch (DicomException)
+        {
+        }
+        catch (FormatException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
         }
     }
 

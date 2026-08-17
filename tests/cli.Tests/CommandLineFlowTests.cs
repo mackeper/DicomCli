@@ -31,6 +31,7 @@ public sealed class CommandLineFlowTests
         Assert.Contains("5  Invalid JSON or DICOMweb JSON", result.Output);
         Assert.Contains("6  Write failure", result.Output);
         Assert.Contains("7  Compare found differences", result.Output);
+        Assert.Contains("--skip-validation", result.Output);
         Assert.Empty(result.Error);
     }
 
@@ -222,6 +223,7 @@ public sealed class CommandLineFlowTests
     [Theory]
     [InlineData("--compact", "--compact cannot be used when comparing with -c/--compare.")]
     [InlineData("--force", "--force cannot be used when comparing with -c/--compare.")]
+    [InlineData("--skip-validation", "--skip-validation cannot be used when comparing with -c/--compare.")]
     public async Task CompareOptionWithIncompatibleFlagReturnsFailure(string optionName, string expectedError)
     {
         var result = await ExecuteCommandAsync("left.dcm", "-c", "right.dcm", optionName);
@@ -261,12 +263,52 @@ public sealed class CommandLineFlowTests
     }
 
     [Fact]
+    public async Task OutputOptionWithSkipValidationInvokesBestEffortWriteFlow()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-command-flow-");
+        try
+        {
+            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
+            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
+            await File.WriteAllTextAsync(jsonPath, """
+                {
+                  "00100010": { "vr": "PN", "Value": [{ "Alphabetic": "Doe^Jane" }] }
+                }
+                """, TestContext.Current.CancellationToken);
+
+            var result = await ExecuteCommandAsync(jsonPath, "-o", dicomPath, "--skip-validation");
+            var readResult = await ExecuteCommandAsync(dicomPath, "--format", "json");
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Empty(result.Error);
+            Assert.True(File.Exists(dicomPath));
+            Assert.Equal(0, readResult.ExitCode);
+            Assert.Contains("Doe^Jane", readResult.Output);
+            Assert.Empty(readResult.Error);
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task ForceWithoutOutputOptionReturnsFailure()
     {
         var result = await ExecuteCommandAsync("input.dcm", "--force");
 
         Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
         Assert.Contains("--force can only be used when writing", result.Error);
+        Assert.DoesNotContain("File not found", result.Error);
+    }
+
+    [Fact]
+    public async Task SkipValidationWithoutOutputOptionReturnsFailure()
+    {
+        var result = await ExecuteCommandAsync("input.dcm", "--skip-validation");
+
+        Assert.Equal(ExitCode.InvalidArguments, result.ExitCode);
+        Assert.Contains("--skip-validation can only be used when writing", result.Error);
         Assert.DoesNotContain("File not found", result.Error);
     }
 
@@ -309,6 +351,7 @@ public sealed class CommandLineFlowTests
     [Theory]
     [InlineData("--compact", "--compact cannot be used when extracting with --extract.")]
     [InlineData("--force", "--force cannot be used when extracting with --extract.")]
+    [InlineData("--skip-validation", "--skip-validation cannot be used when extracting with --extract.")]
     public async Task ExtractOptionWithIncompatibleFlagReturnsFailure(string optionName, string expectedError)
     {
         var result = await ExecuteCommandAsync("input.dcm", "--extract", "32531000:xml", optionName);

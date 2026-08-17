@@ -5,25 +5,30 @@ using FellowOakDicom;
 
 internal static class DicomwebJsonReader
 {
-    public static DicomDataset Read(JsonElement datasetElement)
+    public static DicomDataset Read(JsonElement datasetElement, bool validateItems = true)
     {
         var dataset = new DicomDataset();
+        if (!validateItems)
+        {
+            dataset.NotValidated();
+        }
+
         var tagProperties = datasetElement.EnumerateObject().ToArray();
 
         foreach (var tagProperty in tagProperties.Where(IsPrivateCreatorAttribute))
         {
-            AddJsonAttribute(dataset, tagProperty);
+            AddJsonAttribute(dataset, tagProperty, validateItems);
         }
 
         foreach (var tagProperty in tagProperties.Where(tagProperty => !IsPrivateCreatorAttribute(tagProperty)))
         {
-            AddJsonAttribute(dataset, tagProperty);
+            AddJsonAttribute(dataset, tagProperty, validateItems);
         }
 
         return dataset;
     }
 
-    private static void AddJsonAttribute(DicomDataset dataset, JsonProperty tagProperty)
+    private static void AddJsonAttribute(DicomDataset dataset, JsonProperty tagProperty, bool validateItems)
     {
         var tag = ParseTag(tagProperty.Name);
         var attribute = tagProperty.Value;
@@ -39,7 +44,7 @@ internal static class DicomwebJsonReader
 
         var vr = DicomVR.Parse(vrElement.GetString() ?? string.Empty);
         tag = ResolvePrivateTag(dataset, tag);
-        AddAttribute(dataset, tag, vr, attribute);
+        AddAttribute(dataset, tag, vr, attribute, validateItems);
     }
 
     private static bool IsPrivateCreatorAttribute(JsonProperty tagProperty)
@@ -79,7 +84,7 @@ internal static class DicomwebJsonReader
             : tag;
     }
 
-    private static void AddAttribute(DicomDataset dataset, DicomTag tag, DicomVR vr, JsonElement attribute)
+    private static void AddAttribute(DicomDataset dataset, DicomTag tag, DicomVR vr, JsonElement attribute, bool validateItems)
     {
         if (attribute.TryGetProperty("BulkDataURI", out _))
         {
@@ -88,7 +93,7 @@ internal static class DicomwebJsonReader
 
         if (vr == DicomVR.SQ)
         {
-            dataset.Add(new DicomSequence(tag, ReadSequenceItems(tag, attribute)));
+            dataset.Add(new DicomSequence(tag, ReadSequenceItems(tag, attribute, validateItems)));
             return;
         }
 
@@ -112,7 +117,7 @@ internal static class DicomwebJsonReader
         AddValueAttribute(dataset, tag, vr, values);
     }
 
-    private static DicomDataset[] ReadSequenceItems(DicomTag tag, JsonElement attribute)
+    private static DicomDataset[] ReadSequenceItems(DicomTag tag, JsonElement attribute, bool validateItems)
     {
         if (!attribute.TryGetProperty("Value", out var values))
         {
@@ -132,7 +137,7 @@ internal static class DicomwebJsonReader
                 throw new FormatException($"Sequence {tag} contains a non-object item.");
             }
 
-            items.Add(Read(item));
+            items.Add(Read(item, validateItems));
         }
 
         return [.. items];

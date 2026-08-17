@@ -65,6 +65,10 @@ internal static class ArgumentParser
             aliases: ["--force"],
             description: "Overwrite the output DICOM file when writing.");
 
+        var skipValidationOption = new Option<bool>(
+            aliases: ["--skip-validation"],
+            description: "Write best-effort DICOM output from incomplete or non-conformant JSON. Output may be non-conformant.");
+
         var compareOption = new Option<string?>(
             aliases: ["-c", "--compare"],
             description: "Path to DICOM file to compare with input file.");
@@ -93,6 +97,7 @@ internal static class ArgumentParser
             compactOption,
             outputOption,
             forceOption,
+            skipValidationOption,
             compareOption,
             extractOption
         };
@@ -108,6 +113,7 @@ internal static class ArgumentParser
                 compactOption,
                 outputOption,
                 forceOption,
+                skipValidationOption,
                 compareOption,
                 extractOption,
                 error);
@@ -133,6 +139,7 @@ internal static class ArgumentParser
         Option<bool> compactOpt,
         Option<string?> outputOpt,
         Option<bool> forceOpt,
+        Option<bool> skipValidationOpt,
         Option<string?> compareOpt,
         Option<string?> extractOpt,
         TextWriter error)
@@ -184,6 +191,12 @@ internal static class ArgumentParser
                 return null;
             }
 
+            if (context.ParseResult.GetValueForOption(skipValidationOpt))
+            {
+                error.WriteLine("--skip-validation cannot be used when comparing with -c/--compare.");
+                return null;
+            }
+
             return new CompareCommand(inputPath, comparePath);
         }
 
@@ -220,7 +233,11 @@ internal static class ArgumentParser
                 return null;
             }
 
-            return new WriteCommand(inputPath, outputPath, context.ParseResult.GetValueForOption(forceOpt));
+            return new WriteCommand(
+                inputPath,
+                outputPath,
+                context.ParseResult.GetValueForOption(forceOpt),
+                context.ParseResult.GetValueForOption(skipValidationOpt));
         }
 
         if (hasExtractOption)
@@ -249,6 +266,12 @@ internal static class ArgumentParser
                 return null;
             }
 
+            if (context.ParseResult.GetValueForOption(skipValidationOpt))
+            {
+                error.WriteLine("--skip-validation cannot be used when extracting with --extract.");
+                return null;
+            }
+
             var extractValue = context.ParseResult.GetValueForOption(extractOpt);
             return TryParseExtractValue(extractValue, error, out var group, out var element, out var extractFormat)
                 ? new ExtractCommand(inputPath, group, element, extractFormat)
@@ -258,6 +281,12 @@ internal static class ArgumentParser
         if (context.ParseResult.GetValueForOption(forceOpt))
         {
             error.WriteLine("--force can only be used when writing with -o/--output.");
+            return null;
+        }
+
+        if (context.ParseResult.GetValueForOption(skipValidationOpt))
+        {
+            error.WriteLine("--skip-validation can only be used when writing with -o/--output.");
             return null;
         }
 

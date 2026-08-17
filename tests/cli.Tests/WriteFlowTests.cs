@@ -93,6 +93,87 @@ public sealed class WriteFlowTests
     }
 
     [Fact]
+    public async Task WriteIncompleteDicomwebJsonWithoutSkipValidationReturnsWriteFailure()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-write-flow-");
+        try
+        {
+            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
+            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
+            await File.WriteAllTextAsync(jsonPath, IncompleteDicomwebJson, TestContext.Current.CancellationToken);
+
+            var result = ExecuteWrite(jsonPath, dicomPath);
+
+            Assert.Equal(ExitCode.WriteFailure, result.ExitCode);
+            Assert.Contains("(0008,0016)", result.Error);
+            Assert.False(File.Exists(dicomPath));
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task WriteIncompleteDicomwebJsonWithSkipValidationWritesReadableBestEffortDicom()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-write-flow-");
+        try
+        {
+            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
+            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
+            await File.WriteAllTextAsync(jsonPath, IncompleteDicomwebJson, TestContext.Current.CancellationToken);
+
+            var writeResult = ExecuteWrite(jsonPath, dicomPath, skipValidation: true);
+            var readResult = ExecuteRead(dicomPath, "json", "base64");
+
+            Assert.Equal(0, writeResult.ExitCode);
+            Assert.Empty(writeResult.Error);
+            Assert.True(File.Exists(dicomPath));
+            Assert.Equal(0, readResult.ExitCode);
+            Assert.Empty(readResult.Error);
+            using var readDocument = JsonDocument.Parse(readResult.Output);
+            var personName = readDocument.RootElement.GetProperty("00100010").GetProperty("Value")[0];
+            Assert.Equal("Doe^Jane", personName.GetProperty("Alphabetic").GetString());
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task WriteInvalidUidWithSkipValidationWritesReadableBestEffortDicom()
+    {
+        var workDirectory = Directory.CreateTempSubdirectory("dicomcli-write-flow-");
+        try
+        {
+            var jsonPath = Path.Combine(workDirectory.FullName, "input.json");
+            var dicomPath = Path.Combine(workDirectory.FullName, "output.dcm");
+            await File.WriteAllTextAsync(jsonPath, """
+                {
+                  "00080016": { "vr": "UI", "Value": ["invalid.uid"] },
+                  "00080018": { "vr": "UI", "Value": ["also.invalid"] },
+                  "00100010": { "vr": "PN", "Value": [{ "Alphabetic": "Doe^Jane" }] }
+                }
+                """, TestContext.Current.CancellationToken);
+
+            var writeResult = ExecuteWrite(jsonPath, dicomPath, skipValidation: true);
+            var readResult = ExecuteRead(dicomPath, "json", "base64");
+
+            Assert.Equal(0, writeResult.ExitCode);
+            Assert.Empty(writeResult.Error);
+            Assert.Equal(0, readResult.ExitCode);
+            Assert.Contains("invalid.uid", readResult.Output);
+            Assert.Empty(readResult.Error);
+        }
+        finally
+        {
+            workDirectory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task WriteDicomwebJsonWithUnknownPrivateTagUsesPrivateCreatorVr()
     {
         var workDirectory = Directory.CreateTempSubdirectory("dicomcli-write-flow-");
@@ -203,15 +284,21 @@ public sealed class WriteFlowTests
         return new FlowResult(exitCode, output.ToString(), error.ToString());
     }
 
-    private static FlowResult ExecuteWrite(string inputPath, string outputPath, bool force = false)
+    private static FlowResult ExecuteWrite(string inputPath, string outputPath, bool force = false, bool skipValidation = false)
     {
         TestDicomFiles.EnsureDicomSetup();
         using var error = new StringWriter();
 
-        var exitCode = CommandExecutor.Execute(new WriteCommand(inputPath, outputPath, force), TextWriter.Null, error);
+        var exitCode = CommandExecutor.Execute(new WriteCommand(inputPath, outputPath, force, skipValidation), TextWriter.Null, error);
 
         return new FlowResult(exitCode, string.Empty, error.ToString());
     }
+
+    private const string IncompleteDicomwebJson = """
+        {
+          "00100010": { "vr": "PN", "Value": [{ "Alphabetic": "Doe^Jane" }] }
+        }
+        """;
 
     private static OutputFormat ParseOutputFormat(string format)
     {
