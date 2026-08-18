@@ -5,6 +5,7 @@ Only include changes that affect users, such as features, bug fixes, and user-fa
 ## 0.1.1
 
 - Added documented CLI exit codes for invalid arguments, unreadable input, invalid DICOM, invalid JSON, write failures, validation failures, and compare differences.
+- Added `--skip-validation` for best-effort JSON-to-DICOM writes when input JSON is incomplete or non-conformant.
 - Added `--extract <tag>:base64|hex|xml` to extract binary DICOM tag data.
 - Added `-c, --compare <file>` to show DICOM-aware differences between two DICOM files.
 

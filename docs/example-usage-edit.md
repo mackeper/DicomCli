@@ -87,6 +87,14 @@ Use `--force` only when you intend to overwrite an existing output file:
 dicomcli image.json --output edited.dcm --force
 ```
 
+Use `--skip-validation` only for best-effort output from incomplete or non-conformant JSON:
+
+```bash
+dicomcli partial.json --output partial.dcm --skip-validation
+```
+
+The resulting file may be non-conformant and unsuitable for clinical use.
+
 ## 4. Check The Result
 
 Inspect edited values before sharing or using the new file.

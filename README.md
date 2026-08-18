@@ -12,10 +12,13 @@ dicomcli image.dcm --format json
 dicomcli image.dcm --format json --compact
 dicomcli image.dcm --extract 7FE00010:base64
 dicomcli input.json --output output.dcm
+dicomcli partial.json --output output.dcm --skip-validation
 dicomcli left.dcm -c right.dcm
 ```
 
-Common options: `--format text|json`, `--compact`, `--binary-format summary|hex|base64`, `--extract <tag>:base64|hex|xml`, `-o, --output <file>`, `-c, --compare <file>`, `--help`.
+Common options: `--format text|json`, `--compact`, `--binary-format summary|hex|base64`, `--extract <tag>:base64|hex|xml`, `-o, --output <file>`, `--skip-validation`, `-c, --compare <file>`, `--help`.
+
+`--skip-validation` is write-only and creates best-effort DICOM output from incomplete or non-conformant JSON. Output may be non-conformant and unsuitable for clinical use.
 
 Exit codes:
 
