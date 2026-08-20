@@ -18,6 +18,8 @@ internal sealed record WriteCommand(
     bool Force,
     bool SkipValidation = false) : CliCommand;
 
+internal sealed record ValidateCommand(string FilePath) : CliCommand;
+
 internal sealed record CompareCommand(
     string LeftPath,
     string RightPath) : CliCommand;

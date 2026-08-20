@@ -22,6 +22,13 @@ Read a DICOM file as DICOMweb JSON:
 dicomcli image.dcm --format json
 ```
 
+Validate a DICOM file or DICOMweb JSON without converted output:
+
+```bash
+dicomcli image.dcm --validate
+dicomcli input.json --validate
+```
+
 Extract a binary tag as base64, hex, or XML:
 
 ```bash
