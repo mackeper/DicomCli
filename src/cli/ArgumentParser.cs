@@ -69,6 +69,10 @@ internal static class ArgumentParser
             aliases: ["--skip-validation"],
             description: "Write best-effort DICOM output from incomplete or non-conformant JSON. Output may be non-conformant.");
 
+        var validateOption = new Option<bool>(
+            aliases: ["--validate"],
+            description: "Validate input DICOM or DICOMweb JSON without emitting converted output.");
+
         var compareOption = new Option<string?>(
             aliases: ["-c", "--compare"],
             description: "Path to DICOM file to compare with input file.");
@@ -98,6 +102,7 @@ internal static class ArgumentParser
             outputOption,
             forceOption,
             skipValidationOption,
+            validateOption,
             compareOption,
             extractOption
         };
@@ -114,6 +119,7 @@ internal static class ArgumentParser
                 outputOption,
                 forceOption,
                 skipValidationOption,
+                validateOption,
                 compareOption,
                 extractOption,
                 error);
@@ -140,6 +146,7 @@ internal static class ArgumentParser
         Option<string?> outputOpt,
         Option<bool> forceOpt,
         Option<bool> skipValidationOpt,
+        Option<bool> validateOpt,
         Option<string?> compareOpt,
         Option<string?> extractOpt,
         TextWriter error)
@@ -147,6 +154,60 @@ internal static class ArgumentParser
         var inputPath = context.ParseResult.GetValueForArgument(fileArg);
         var comparePath = context.ParseResult.GetValueForOption(compareOpt);
         var hasExtractOption = context.ParseResult.FindResultFor(extractOpt)?.Tokens.Count > 0;
+
+        if (context.ParseResult.GetValueForOption(validateOpt))
+        {
+            if (context.ParseResult.FindResultFor(compareOpt)?.Tokens.Count > 0)
+            {
+                error.WriteLine("-c/--compare cannot be used when validating with --validate.");
+                return null;
+            }
+
+            if (context.ParseResult.FindResultFor(outputOpt)?.Tokens.Count > 0)
+            {
+                error.WriteLine("-o/--output cannot be used when validating with --validate.");
+                return null;
+            }
+
+            if (hasExtractOption)
+            {
+                error.WriteLine("--extract cannot be used when validating with --validate.");
+                return null;
+            }
+
+            if (context.ParseResult.FindResultFor(formatOpt)?.Tokens.Count > 0)
+            {
+                error.WriteLine("--format cannot be used when validating with --validate.");
+                return null;
+            }
+
+            if (context.ParseResult.FindResultFor(binaryOpt)?.Tokens.Count > 0)
+            {
+                error.WriteLine("--binary-format cannot be used when validating with --validate.");
+                return null;
+            }
+
+            if (context.ParseResult.GetValueForOption(compactOpt))
+            {
+                error.WriteLine("--compact cannot be used when validating with --validate.");
+                return null;
+            }
+
+            if (context.ParseResult.GetValueForOption(forceOpt))
+            {
+                error.WriteLine("--force cannot be used when validating with --validate.");
+                return null;
+            }
+
+            if (context.ParseResult.GetValueForOption(skipValidationOpt))
+            {
+                error.WriteLine("--skip-validation cannot be used when validating with --validate.");
+                return null;
+            }
+
+            return new ValidateCommand(inputPath);
+        }
+
         if (context.ParseResult.FindResultFor(compareOpt)?.Tokens.Count > 0)
         {
             if (string.IsNullOrWhiteSpace(comparePath))

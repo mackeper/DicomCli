@@ -14,11 +14,133 @@ internal static class CommandExecutor
             ReadCommand read => ExecuteRead(read, output, styledError, outputColor),
             ExtractCommand extract => ExecuteExtract(extract, output, styledError),
             WriteCommand write => ExecuteWrite(write, styledError),
+            ValidateCommand validate => ExecuteValidate(validate, styledError),
             CompareCommand compare => ExecuteCompare(compare, output, styledError, outputColor),
             HelpCommand help => Write(help.Text, output),
             VersionCommand version => WriteLine(version.Text, output),
             _ => throw new InvalidOperationException($"Unknown command type: {command.GetType().Name}")
         };
+    }
+
+    private static int ExecuteValidate(ValidateCommand command, TextWriter error)
+    {
+        if (HasDicomExtension(command.FilePath))
+        {
+            return ValidateDicomFile(command.FilePath, error);
+        }
+
+        if (HasExtension(command.FilePath, ".json"))
+        {
+            return ValidateDicomwebJson(command.FilePath, error);
+        }
+
+        error.WriteLine("Input file for validate mode must have extension .dcm, .dicom, or .json.");
+        return ExitCode.InvalidArguments;
+    }
+
+    private static int ValidateDicomFile(string filePath, TextWriter error)
+    {
+        if (!File.Exists(filePath))
+        {
+            error.WriteLine($"File not found: {filePath}");
+            return ExitCode.InputUnavailable;
+        }
+
+        DicomFile file;
+        try
+        {
+            file = DicomFile.Open(filePath);
+        }
+        catch (IOException ex)
+        {
+            error.WriteLine($"Failed to open DICOM file: {ex.Message}");
+            return ExitCode.InputUnavailable;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            error.WriteLine($"Failed to open DICOM file: {ex.Message}");
+            return ExitCode.InputUnavailable;
+        }
+        catch (DicomException ex)
+        {
+            error.WriteLine($"Failed to parse DICOM file: {ex.Message}");
+            return ExitCode.InvalidDicom;
+        }
+
+        try
+        {
+            new DicomFile(file.Dataset).Save(Stream.Null);
+            return ExitCode.Success;
+        }
+        catch (DicomException ex)
+        {
+            error.WriteLine($"DICOM validation failed: {ex.Message}");
+            return ExitCode.ValidationFailure;
+        }
+    }
+
+    private static int ValidateDicomwebJson(string filePath, TextWriter error)
+    {
+        if (!File.Exists(filePath))
+        {
+            error.WriteLine($"File not found: {filePath}");
+            return ExitCode.InputUnavailable;
+        }
+
+        DicomDataset dataset;
+        try
+        {
+            using var stream = File.OpenRead(filePath);
+            using var document = JsonDocument.Parse(stream);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                error.WriteLine("DICOMweb JSON root must be an object.");
+                return ExitCode.InvalidJson;
+            }
+
+            dataset = DicomwebJsonReader.Read(document.RootElement);
+        }
+        catch (JsonException ex)
+        {
+            error.WriteLine($"Failed to parse JSON file: {ex.Message}");
+            return ExitCode.InvalidJson;
+        }
+        catch (IOException ex)
+        {
+            error.WriteLine($"Failed to read JSON file: {ex.Message}");
+            return ExitCode.InputUnavailable;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            error.WriteLine($"Failed to read JSON file: {ex.Message}");
+            return ExitCode.InputUnavailable;
+        }
+        catch (DicomException ex)
+        {
+            error.WriteLine($"Failed to create DICOM file: {ex.Message}");
+            return ExitCode.InvalidJson;
+        }
+        catch (FormatException ex)
+        {
+            error.WriteLine($"Failed to parse DICOMweb JSON: {ex.Message}");
+            return ExitCode.InvalidJson;
+        }
+        catch (InvalidOperationException ex)
+        {
+            error.WriteLine($"Failed to parse DICOMweb JSON: {ex.Message}");
+            return ExitCode.InvalidJson;
+        }
+
+        try
+        {
+            new DicomFile(dataset).Save(Stream.Null);
+            return ExitCode.Success;
+        }
+        catch (DicomException ex)
+        {
+            error.WriteLine($"DICOMweb JSON validation failed: {ex.Message}");
+            return ExitCode.ValidationFailure;
+        }
     }
 
     private static int ExecuteExtract(ExtractCommand command, TextWriter output, TextWriter error)
